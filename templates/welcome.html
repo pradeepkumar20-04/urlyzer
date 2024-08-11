@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Future Web: Browser History and URL Security Insights</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #13025af8; /* Darker background color */
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+        }
+        .welcome-container {
+            text-align: center;
+            padding: 50px;
+            animation: fadeIn 2s ease-in;
+            z-index: 1;
+        }
+        .logo {
+            width: 500px;
+            height: auto;
+            margin-bottom: 20px;
+            animation: fadeIn 2s ease-in;
+        }
+        .welcome-title {
+            font-size: 2.5em;
+            color: #fff; /* Light color to contrast with dark background */
+            margin-bottom: 20px;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: slideIn 1s forwards 0.5s;
+        }
+        .welcome-description {
+            font-size: 1.2em;
+            color: #ddd; /* Slightly lighter color for readability */
+            margin: 0 auto;
+            max-width: 600px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideIn 1s forwards 1s;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 1em;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            margin: 10px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .button:hover {
+            background-color: #0056b3;
+            transform: translateY(-3px);
+        }
+        .button:active {
+            transform: translateY(1px);
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animated-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #1a1a1a, #333);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: -1;
+            filter: blur(8px);
+            opacity: 0.5;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 100% 100%; }
+            100% { background-position: 0% 0%; }
+        }
+        .footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-background"></div>
+    <div class="welcome-container">
+        <img src="/static/logo.gif" alt="URLyzer" class="logo">
+        <div class="welcome-title">URLyzer: Browser History and URL Security Insights</div>
+        <div class="welcome-description">
+            Welcome to URLyzer! Analyze your browser history and get insights on URL security with our advanced tools.
+            <br><br>
+            <a href="/index" class="button">Get Started</a>
+            <a href="/upload" class="button">Upload History</a>
+        </div>
+    </div>
+    <footer class="footer">
+        &copy; 2024 Future Web. All rights reserved.
+    </footer>
+</body>
+</html>

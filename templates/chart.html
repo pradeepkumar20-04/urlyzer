@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualization Dashboard</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            background-color: #030227b6;
+            color: #b9afaf9c;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h2 {
+            margin-top: 20px;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .btn-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            background-color: #027373;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #035b5b;
+            transform: translateY(-3px);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #visualizations {
+            width: 80%;
+            margin: 40px auto;
+            text-align: center;
+            transition: opacity 0.5s ease;
+        }
+
+        #bubble_chart,
+        #network_graph,
+        #heatmap {
+            transition: opacity 2s ease;
+        }
+
+        .range-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px auto;
+            width: 80%;
+        }
+
+        .range-container label {
+            margin: 0 10px;
+            font-size: 1.1em;
+        }
+
+        .range-container input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .range-container input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #027373;
+            border-radius: 5px;
+        }
+
+        .range-container input[type="range"]::-webkit-slider-thumb {
+            border: 1px solid #027373;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .range-container input[type="range"]::-webkit-slider-thumb:hover {
+            background-color: #035b5b;
+            transform: scale(1.2);
+        }
+
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            width: 140px;
+            height: 40px;
+            padding: 8px;
+            font: 14px sans-serif;
+            background: rgba(70, 130, 180, 0.9);
+            color: #fff;
+            border-radius: 8px;
+            pointer-events: none;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+            transform: translateY(-10px);
+        }
+
+        #heatmapSvg {
+            width: 100%;
+            height: auto;
+        }
+
+        .heatmap-cell {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .heatmap-cell:hover {
+            transform: scale(1.1);
+        }
+
+        #footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+
+    </style>
+</head>
+<body>
+    <h2>TimeLine Analysis Dashboard</h2>
+
+    <div class="btn-container">
+        <button id="showBubbleChart" class="btn">Bubble Chart</button>
+        <button id="showNetworkGraph" class="btn">Network Graph</button>
+        <button id="showHeatmap" class="btn">Heatmap</button>
+    </div>
+
+    <div id="visualizations">
+        <div id="bubble_chart" class="hidden">
+            <div class="range-container">
+                <label for="fromDate">From:</label>
+                <input type="range" id="fromDate" min="0" max="100" value="0" step="1" />
+                <label id="fromDateLabel"></label>
+            </div>
+    
+            <div class="range-container">
+                <label for="toDate">To:</label>
+                <input type="range" id="toDate" min="0" max="100" value="100" step="1" />
+                <label id="toDateLabel"></label>
+            </div>
+        </div>
+      
+        <div id="network_graph" class="hidden"></div>
+
+        <div id="heatmap" class="hidden">
+            <div class="range-container">
+                <label for="weekSelect">Select Week:</label>
+                <select id="weekSelect"></select>
+            </div>
+            <svg id="heatmapSvg"></svg>
+            <div id="heatmapContainer"></div>
+        </div>
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+
+    <div id="footer">
+        <p>&copy; 2024 Visualization Dashboard. All rights reserved.</p>
+    </div>
+    <script>
+        window.onload = function () {
+
+            const domainData = JSON.parse(sessionStorage.getItem('domainData'));
+            const dateData = JSON.parse(sessionStorage.getItem('dateData'));
+
+            if (domainData && dateData) {
+                const width = 1000;
+                const height = 800;
+                const cellSize = 50; // Size of each cell in the heatmap
+                
+                const bubbleChartContainer = d3.select("#bubble_chart");
+                const networkGraphContainer = d3.select("#network_graph");
+               
+            
+    
+                // Bubble Chart
+                const svgBubble = bubbleChartContainer.append("svg")
+                    .attr("width", width)
+                    .attr("height", height);
+    
+                const bubble = d3.pack()
+                    .size([width, height])
+                    .padding(1.5);
+    
+                const color = d3.scaleOrdinal(d3.schemeCategory10);
+    
+                const rootBubble = d3.hierarchy({
+                    children: Object.keys(domainData).map(domain => ({
+                        domain,
+                        value: domainData[domain],
+                        date: dateData[domain]
+                    }))
+                }).sum(d => d.value);
+    
+                let nodesBubble = bubble(rootBubble).leaves();
+                updateBubbleChart(nodesBubble);
+    
+                const tooltip = d3.select("#tooltip");
+    
+                function updateBubbleChart(filteredNodes) {
+                    // Bind the data to existing nodes
+                    const nodes = svgBubble.selectAll(".node")
+                        .data(filteredNodes, d => d.data.domain);
+    
+                    // Remove any exiting nodes
+                    nodes.exit().remove();
+    
+                    // Enter new nodes
+                    const nodeEnter = nodes.enter().append("g")
+                        .attr("class", "node")
+                        .attr("transform", d => `translate(${d.x},${d.y})`);
+    
+                    nodeEnter.append("circle")
+                        .attr("r", d => d.r)
+                        .style("fill", d => color(d.data.domain));
+    
+                        nodeEnter.append("text")
+    .attr("dy", ".3em")
+    .style("text-anchor", "middle")
+    .text(d => {
+        const domain = d.data.domain;
+        const visits = d.data.value;
+
+        // Check if the domain name is long and visits are less than 20
+        if (domain.length > 1 && visits < 30) {
+            return domain[0] + domain[domain.length - 1]; // Show first and last letter
+        } else {
+            return d.r > 20 ? domain : domain[0] + domain[domain.length - 5]; // Full domain or condensed format
+        }
+    })
+    .style("font-size", d => d.r > 20 ? "12px" : "8px")
+    .style("font-weight", "thin")  
+    .style("font-family", "Times New Roman")   
+    .style("fill", "#fff")  // Set the text color to white
+    .style("paint-order", "stroke")  // Ensure the stroke appears outside the fill
+    .style("stroke", "#000")  // Set the stroke color to black for a dark outline
+    .style("stroke-width", 0.5);  // Adjust the stroke width as needed
+
+    
+                    // Handle updating and merging of nodes
+                    const nodeUpdate = nodeEnter.merge(nodes);
+    
+                    // Add transition for the re-arrangement
+                    nodeUpdate.transition().duration(5000)
+                        .attr("transform", d => `translate(${d.x},${d.y})`);
+    
+                    nodeUpdate.select("circle")
+                        .attr("r", d => d.r);
+    
+                    nodeUpdate.select("text")
+                        .text(d => {
+                            const domain = d.data.domain;
+                            return d.r > 20 ? domain : domain[0] + domain[domain.length - 5];
+                        })
+                        .style("font-size", d => d.r > 20 ? "12px" : "8px");
+    
+                    nodeUpdate.on("mouseover", (event, d) => {
+                        tooltip.transition().duration(200).style("opacity", .9);
+                        tooltip.html(`Domain: ${d.data.domain}<br>Visits: ${d.data.value}`)
+                            .style("left", (event.pageX + 5) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    }).on("mouseout", () => {
+                        tooltip.transition().duration(500).style("opacity", 0);
+                    });
+                }
+    
+                function filterByDateRange(startDate, endDate) {
+                    const filteredNodes = rootBubble.leaves().filter(node => {
+                        const nodeDate = new Date(node.data.date);
+                        return nodeDate >= startDate && nodeDate <= endDate;
+                    });
+    
+                    // Recalculate positions
+                    const bubble = d3.pack()
+                        .size([width, height])
+                        .padding(1.5);
+    
+                    const updatedRoot = d3.hierarchy({
+                        children: filteredNodes.map(node => node.data)
+                    }).sum(d => d.value);
+    
+                    const updatedNodes = bubble(updatedRoot).leaves();
+                    updateBubbleChart(updatedNodes);
+                }
+    
+                const fromDateRange = document.getElementById('fromDate');
+                const fromDateLabel = document.getElementById('fromDateLabel');
+                const toDateRange = document.getElementById('toDate');
+                const toDateLabel = document.getElementById('toDateLabel');
+    
+                const allDates = Object.values(dateData)
+                    .map(dateStr => new Date(dateStr))
+                    .filter(date => date.getFullYear() === 2024)
+                    .map(date => date.getTime());
+    
+                if (allDates.length === 0) {
+                    console.error("No dates found for the year 2024.");
+                    return;
+                }
+    
+                const minDateMs = Math.min(...allDates);
+                const maxDateMs = Math.max(...allDates);
+    
+                function formatDate(date) {
+                    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+                }
+    
+                function updateRangeLabels() {
+                    const fromRangeValue = +fromDateRange.value;
+                    const toRangeValue = +toDateRange.value;
+    
+                    const fromDate = new Date(minDateMs + (fromRangeValue / 100) * (maxDateMs - minDateMs));
+                    const toDate = new Date(minDateMs + (toRangeValue / 100) * (maxDateMs - minDateMs));
+    
+                    fromDateLabel.textContent = `From ${formatDate(fromDate)}`;
+                    toDateLabel.textContent = `To ${formatDate(toDate)}`;
+    
+                    filterByDateRange(fromDate, toDate);
+                }
+    
+                fromDateRange.addEventListener('input', updateRangeLabels);
+                toDateRange.addEventListener('input', updateRangeLabels);
+
+                const svgNetwork = networkGraphContainer.append("svg")
+    .attr("width", 1000)
+    .attr("height", 800);
+
+const color1 = d3.scaleOrdinal(d3.schemeCategory10);
+
+const nodes = Object.keys(domainData)
+    .filter(domain => domainData[domain] > 10)
+    .map((domain) => ({
+        id: domain,
+        count: domainData[domain],
+        name: domain.replace(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)\/?.*$/, '$1'),
+        x: Math.random() * 1000,
+        y: Math.random() * 800
+    }));
+
+if (nodes.length < 2) {
+    console.error("Not enough nodes with count greater than 50.");
+    return;
+}
+
+const links = nodes.map((node, i) => ({
+    source: node,
+    target: nodes[(i + 1) % nodes.length],
+    value: Math.random() * 10
+}));
+
+svgNetwork.append("defs").selectAll("marker")
+    .data(["arrow"])
+    .enter().append("marker")
+    .attr("id", "arrow")
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 15)
+    .attr("refY", 0)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-5L10,0L0,5")
+    .attr("fill", "#666");
+
+const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(120))
+    .force("charge", d3.forceManyBody().strength(-300))
+    .force("center", d3.forceCenter(1000 / 2, 800 / 2))
+    .on("tick", ticked);
+
+const link = svgNetwork.append("g")
+    .attr("stroke", "#aaa")
+    .attr("stroke-opacity", 0.6)
+    .selectAll("line")
+    .data(links)
+    .enter().append("line")
+    .attr("stroke-width", d => Math.sqrt(d.value))
+    .attr("marker-end", "url(#arrow)");
+
+const node = svgNetwork.append("g")
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.5)
+    .selectAll("circle")
+    .data(nodes)
+    .enter().append("circle")
+    .attr("r", d => Math.sqrt(d.count) + 5)
+    .attr("fill", d => color1(d.id))
+    .call(drag(simulation));
+
+// Tooltip functionality
+const tooltip1 = d3.select("#tooltip");
+
+node.on("mouseover", (event, d) => {
+    tooltip1.transition().duration(200).style("opacity", .9);
+    tooltip1.html(`ID: ${d.id}<br>Count: ${d.count}`)
+        .style("left", (event.pageX + 5) + "px")
+        .style("top", (event.pageY - 28) + "px");
+}).on("mouseout", () => {
+    tooltip1.transition().duration(500).style("opacity", 0);
+});
+
+// Adding text labels for each node
+const labels = svgNetwork.append("g")
+    .selectAll("text")
+    .data(nodes)
+    .enter().append("text")
+    .attr("x", d => d.x)
+    .attr("y", d => d.y)
+    .attr("dy", "-1em") // Position the label slightly above the node
+    .attr("text-anchor", "middle")
+    .attr("fill", "#333") // Dark color for text labels
+    .style("font-size", "12px")
+    .text(d => d.name);
+
+function ticked() {
+    link
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+
+    node
+        .attr("cx", d => d.x = Math.max(20, Math.min(980, d.x)))
+        .attr("cy", d => d.y = Math.max(20, Math.min(780, d.y)));
+
+    // Update label positions
+    labels
+        .attr("x", d => d.x)
+        .attr("y", d => d.y - 10); // Position slightly above the node
+}
+
+function drag(simulation) {
+    return d3.drag()
+        .on("start", function (event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        })
+        .on("drag", function (event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        })
+        .on("end", function (event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        });
+}
+
+const heatmapContainer = d3.select("#heatmap");
+const heatmapSvg = d3.select("#heatmapSvg")
+    .attr("width", 7 * cellSize + 1000)
+    .attr("height", 24 * cellSize + 50);
+
+const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([5, 10]);
+
+function createHeatmap(selectedWeek) {
+    heatmapSvg.selectAll("*").remove();
+
+    const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const timesOfDay = d3.range(0, 24);
+
+    // Add labels for days and hours
+    heatmapSvg.selectAll(".dayLabel")
+        .data(daysOfWeek)
+        .enter().append("text")
+        .attr("x", 50)
+        .attr("y", (d, i) => i * cellSize + cellSize + 10)
+        .style("text-anchor", "end")
+        .text(d => d);
+
+    heatmapSvg.selectAll(".timeLabel")
+        .data(timesOfDay)
+        .enter().append("text")
+        .attr("x", (d, i) => i * cellSize + 85)
+        .attr("y", 20)
+        .style("text-anchor", "middle")
+        .text(d => d);
+
+    const dataForWeek = Object.entries(domainData).reduce((acc, [domain, count]) => {
+        const date = new Date(dateData[domain]);
+        if (getWeek(date) === selectedWeek) {
+            const dayIndex = date.getDay() - 1; // Monday as index 0
+            const hourIndex = date.getHours();
+            if (acc[dayIndex] === undefined) acc[dayIndex] = {};
+            if (acc[dayIndex][hourIndex] === undefined) acc[dayIndex][hourIndex] = { count: 0, date: date, domain: domain };
+            acc[dayIndex][hourIndex].count += count;
+        }
+        return acc;
+    }, {});
+
+    const cells = heatmapSvg.selectAll(".cell")
+        .data(daysOfWeek.flatMap((day, dayIndex) =>
+            timesOfDay.map(hour => ({
+                day: dayIndex,
+                hour,
+                count: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].count : 0,
+                date: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].date : null,
+                domain: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].domain : null
+            }))
+        ))
+        .enter().append("rect")
+        .attr("x", d => d.hour * cellSize + 60)
+        .attr("y", d => d.day * cellSize + 30)
+        .attr("width", cellSize)
+        .attr("height", cellSize)
+        .style("fill", d => colorScale(d.count))
+        .style("stroke", "#333")  // Adding stroke color for grid lines
+        .style("stroke-width", "1px")  // Stroke width for grid lines
+        .on("mouseover", function(event, d) {
+            if (d.date) {
+                d3.select("#tooltip")
+                    .style("opacity", 1)
+                    .html(`Count: ${d.count}<br>Date: ${formatDate(d.date)}<br>Time: ${d.hour}:00`)
+                    .style("left", (event.pageX + 5) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            }
+        })
+        .on("mouseout", function() {
+            d3.select("#tooltip")
+                .style("opacity", 0);
+        })
+        .on("contextmenu", function(event, d) {
+            event.preventDefault(); // Prevent the default right-click menu
+
+            if (d.count > 0 && d.domain && d.date) {
+                const details = `Domain: ${d.domain}<br>Visit Count: ${d.count}<br>Date: ${formatDate(d.date)}<br>Time: ${d.hour}:00`;
+                
+                d3.select("#details")
+                    .style("opacity", 1)
+                    .html(details);
+            }
+        });
+}
+
+function getWeek(date) {
+    const startOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date - startOfYear) / 86400000;
+    return Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7);
+}
+
+function populateWeekSelector() {
+    const weeks = Array.from(new Set(Object.values(dateData).map(dateStr => {
+        const date = new Date(dateStr);
+        return getWeek(date);
+    })));
+
+    const weekSelect = document.getElementById("weekSelect");
+    weeks.forEach(week => {
+        const weekStartDate = getWeekStartDate(week);
+        const weekEndDate = new Date(weekStartDate);
+        weekEndDate.setDate(weekEndDate.getDate() + 6);
+
+        const option = document.createElement("option");
+        option.value = week;
+        option.text = `${formatDate(weekStartDate)} to ${formatDate(weekEndDate)}`;
+        weekSelect.appendChild(option);
+    });
+
+    weekSelect.addEventListener("change", () => {
+        createHeatmap(+weekSelect.value);
+    });
+
+    if (weeks.length > 0) {
+        weekSelect.value = weeks[0];
+        createHeatmap(weeks[0]);
+    }
+}
+
+function formatDate(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getWeekStartDate(week) {
+    const yearStart = new Date(new Date().getFullYear(), 0, 1);
+    const startOfWeek = new Date(yearStart.getTime() + ((week - 1) * 7 + (1 - yearStart.getDay())) * 86400000);
+    return startOfWeek;
+}
+
+populateWeekSelector();
+
+// Add an element below the heatmap to display the details
+d3.select("#heatmapContainer").append("div")
+    .attr("id", "details")
+    .style("margin-top", "20px")
+    .style("opacity", 0);
+
+
+          
+                // Button functionality
+                const showBubbleChartBtn = document.getElementById("showBubbleChart");
+                const showNetworkGraphBtn = document.getElementById("showNetworkGraph");
+                const showHeatmapBtn = document.getElementById("showHeatmap");
+                
+    
+                showBubbleChartBtn.addEventListener("click", () => {
+                    bubbleChartContainer.classed("hidden", false);
+                    networkGraphContainer.classed("hidden", true);
+                    heatmapContainer.classed("hidden", true);
+                });
+
+                showNetworkGraphBtn.addEventListener("click", () => {
+                    bubbleChartContainer.classed("hidden", true);
+                    networkGraphContainer.classed("hidden", false);
+                    heatmapContainer.classed("hidden", true);
+                });
+
+                showHeatmapBtn.addEventListener("click", () => {
+                    bubbleChartContainer.classed("hidden", true);
+                    networkGraphContainer.classed("hidden", true);
+                    heatmapContainer.classed("hidden", false);
+                });
+    
+            } else {
+                console.error("Data not found in sessionStorage.");
+            }
+        }
+
+
+    </script>
+</body>
+</html>

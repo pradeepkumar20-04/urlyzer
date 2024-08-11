@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results Page</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes slideIn {
+            0% { opacity: 0; transform: translateY(-20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+    
+        @keyframes glow {
+            0% { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+            50% { box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); }
+            100% { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        }
+    
+        body {
+            font-family: 'Arial', sans-serif; /* Ensure consistency with other pages */
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5; /* Ensure consistency with other pages */
+        }
+
+        #results-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            animation: slideIn 1s ease-in-out;
+            max-width: 1200px; /* Adjust width as needed */
+        }
+    
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            animation: slideIn 1s ease-in-out;
+        }
+    
+        #chart-container {
+            display: flex;
+            justify-content: center;
+            gap: 400px;
+            margin-top: 20px;
+        }
+    
+        #chart-container canvas {
+            width: 100%;
+            height: 400px;
+        }
+    
+        .statistics {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            animation: slideIn 1s ease-in-out;
+            max-width: 1200px; /* Adjust width as needed */
+            position: relative;
+        }
+
+        .statistics h3 {
+            margin-top: 0;
+            font-size: 1.5em;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        .statistics p {
+            margin: 10px 0;
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        .statistics .stat-value {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .statistics .stat-label {
+            color: #7f8c8d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        table th, table td {
+            text-align: left;
+            padding: 12px;
+            border: 1px solid #ddd;
+            overflow-wrap: break-word;
+        }
+        
+        table th {
+            background-color: #f4f4f4;
+            animation: slideIn 1s ease-in-out;
+        }
+        
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        table tr:hover {
+            background-color: #f1f1f1;
+            animation: glow 1s infinite alternate;
+        }
+        
+        table td {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <div class="statistics" id="statistics-container">
+        <h3>Summary Statistics</h3>
+        <p id="total-urls"><span class="stat-label">Total URLs:</span> <span class="stat-value">0</span></p>
+        <p id="unique-categories"><span class="stat-label">Unique Categories:</span> <span class="stat-value">0</span></p>
+        <p id="category-distribution"><span class="stat-label">Category Distribution:</span><br><span class="stat-value">...</span></p>
+    </div>
+    
+    <div id="results-container" class="table-container"></div>
+
+    <div id="chart-container">
+        <div id="bar-chart-container">
+            <canvas id="bar-chart"></canvas>
+        </div>
+        <div id="pie-chart-container">
+            <canvas id="pie-chart"></canvas>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const data = JSON.parse(sessionStorage.getItem('analysisResults'));
+
+            createResultsTable(data, 'Subclassified Normal URLs');
+
+            const categoryCounts = data.reduce((counts, item) => {
+                counts[item.Category] = (counts[item.Category] || 0) + 1;
+                return counts;
+            }, {});
+
+            const categories = Object.keys(categoryCounts);
+            const counts = Object.values(categoryCounts);
+
+            createBarChart(categories, counts);
+            createPieChart(categories, counts);
+            updateStatistics(data, categoryCounts);
+        });
+
+        let currentBarChart = null;
+        let currentPieChart = null;
+
+        function createBarChart(labels, data) {
+            if (currentBarChart) {
+                currentBarChart.destroy();
+            }
+
+            const ctx = document.getElementById('bar-chart').getContext('2d');
+            currentBarChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'URL Categories',
+                        data: data,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createPieChart(labels, data) {
+            if (currentPieChart) {
+                currentPieChart.destroy();
+            }
+
+            const ctx = document.getElementById('pie-chart').getContext('2d');
+            currentPieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'URL Categories',
+                        data: data,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)',
+                            'rgba(75, 192, 192, 0.2)',
+                            'rgba(153, 102, 255, 0.2)',
+                            'rgba(255, 159, 64, 0.2)',
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                        ],
+                        borderWidth: 1
+                    }]
+                }
+            });
+        }
+
+        function createResultsTable(data, title) {
+            const resultsContainer = document.getElementById('results-container');
+            resultsContainer.innerHTML = '';
+
+            const tableTitle = document.createElement('h2');
+            tableTitle.innerText = title;
+            resultsContainer.appendChild(tableTitle);
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = ['URL', 'Category'];
+            headers.forEach(text => {
+                const th = document.createElement('th');
+                th.innerText = text;
+                th.style.border = '1px solid #ddd';
+                th.style.padding = '8px';
+                th.style.backgroundColor = '#f4f4f4';
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                const urlCell = document.createElement('td');
+                urlCell.innerHTML = `<a href="${item.URL}" target="_blank">${item.URL}</a>`;
+                urlCell.style.border = '1px solid #ddd';
+                urlCell.style.padding = '8px';
+
+                const categoryCell = document.createElement('td');
+                categoryCell.innerText = item.Category;
+                categoryCell.style.border = '1px solid #ddd';
+                categoryCell.style.padding = '8px';
+
+                row.appendChild(urlCell);
+                row.appendChild(categoryCell);
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+
+            resultsContainer.appendChild(table);
+        }
+
+        function updateStatistics(data, categoryCounts) {
+            const totalUrls = data.length;
+            const uniqueCategories = Object.keys(categoryCounts).length;
+
+            document.getElementById('total-urls').innerHTML = `<span class="stat-label">Total URLs:</span> <span class="stat-value">${totalUrls}</span>`;
+            document.getElementById('unique-categories').innerHTML = `<span class="stat-label">Unique Categories:</span> <span class="stat-value">${uniqueCategories}</span>`;
+
+            const categoryDistribution = Object.entries(categoryCounts).map(([category, count]) => 
+                `${category}: ${count} (${((count / totalUrls) * 100).toFixed(2)}%)`
+            ).join('<br>');
+
+            document.getElementById('category-distribution').innerHTML = `Category Distribution:<br>${categoryDistribution}`;
+        }
+    </script>
+</body>
+</html>

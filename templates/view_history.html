@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browsing History Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #007BFF;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            cursor: pointer;
+            border-bottom: 2px solid #007BFF;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+        }
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: -1px;
+            font-weight: bold;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+        .tab:hover {
+            background: #e1e1e1;
+        }
+        .tab.active {
+            background: #fff;
+            border-color: #ddd #ddd #fff #ddd;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            box-sizing: border-box;
+        }
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #e1e1e1;
+        }
+        /* Column width styles */
+        th, td {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .url-cell {
+            width: 30%;
+        }
+        .title-cell {
+            width: 20%;
+        }
+        .visit-count-cell {
+            width: 10%;
+        }
+        .last-visit-cell {
+            width: 20%;
+        }
+        .empty-message {
+            text-align: center;
+            font-size: 1.2em;
+            color: #666;
+            margin-top: 30px;
+        }
+        .download-btn, .analysis-btn {
+            display: block;
+            width: fit-content;
+            margin: 20px auto;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .download-btn {
+            background: #007BFF;
+            color: #fff;
+        }
+        .download-btn:hover {
+            background: #0056b3;
+        }
+        .analysis-btn {
+            background: #28a745;
+            color: #fff;
+        }
+        .analysis-btn:hover {
+            background: #218838;
+        }
+        @media (max-width: 768px) {
+            .url-cell, .title-cell, .visit-count-cell, .last-visit-cell {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            th, td {
+                display: block;
+                text-align: right;
+            }
+            td::before {
+                content: attr(data-label);
+                float: left;
+                font-weight: bold;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Browsing History Viewer</h1>
+        <div class="tabs">
+            <div class="tab" data-tab="chrome">Chrome</div>
+            <div class="tab" data-tab="edge">Edge</div>
+            <div class="tab" data-tab="tor">Tor</div>
+            <div class="tab" data-tab="opera">Opera</div>
+            <div class="tab" data-tab="brave">Brave</div>
+            <div class="tab" data-tab="firefox">Firefox</div>
+        </div>
+
+        <!-- Chrome Section -->
+        <div id="chrome" class="tab-content">
+            <h2>Chrome History</h2>
+            <table id="chrome-table">
+                <thead>
+                    <tr>
+                        <th class="url-cell">URL</th>
+                        <th class="title-cell">Title</th>
+                        <th class="visit-count-cell">Visit Count</th>
+                        <th class="last-visit-cell">Last Visit Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if chrome_history %}
+                        {% for url, title, visit_count, last_visit in chrome_history %}
+                            <tr>
+                                <td class="url-cell" data-label="URL">{{ url }}</td>
+                                <td class="title-cell" data-label="Title">{{ title }}</td>
+                                <td class="visit-count-cell" data-label="Visit Count">{{ visit_count }}</td>
+                                <td class="last-visit-cell" data-label="Last Visit Time">{{ last_visit }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-message">No Chrome history available.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="buttons">
+                <form action="/download_history" method="post">
+                    <input type="hidden" name="browser" value="chrome">
+                    <button class="download-btn" type="submit">Download Chrome History CSV</button>
+                </form>
+                <form action="{{ url_for('send_history_for_prediction') }}" method="post" class="analysis-form">
+                    <input type="hidden" name="browser" value="chrome">
+                    <button class="analysis-btn" type="submit">Analyze Chrome History</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edge Section -->
+        <div id="edge" class="tab-content">
+            <h2>Edge History</h2>
+            <table id="edge-table">
+                <thead>
+                    <tr>
+                        <th class="url-cell">URL</th>
+                        <th class="title-cell">Title</th>
+                        <th class="visit-count-cell">Visit Count</th>
+                        <th class="last-visit-cell">Last Visit Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if edge_history %}
+                        {% for url, title, visit_count, last_visit in edge_history %}
+                            <tr>
+                                <td class="url-cell" data-label="URL">{{ url }}</td>
+                                <td class="title-cell" data-label="Title">{{ title }}</td>
+                                <td class="visit-count-cell" data-label="Visit Count">{{ visit_count }}</td>
+                                <td class="last-visit-cell" data-label="Last Visit Time">{{ last_visit }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-message">No Edge history available.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="buttons">
+                <form action="/download_history" method="post">
+                    <input type="hidden" name="browser" value="edge">
+                    <button class="download-btn" type="submit">Download Edge History CSV</button>
+                </form>
+                <form action="{{ url_for('send_history_for_prediction') }}" method="post" class="analysis-form">
+                    <input type="hidden" name="browser" value="edge">
+                    <button class="analysis-btn" type="submit">Analyze Edge History</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tor Section -->
+        <div id="tor" class="tab-content">
+            <h2>Tor History</h2>
+            <table id="tor-table">
+                <thead>
+                    <tr>
+                        <th class="url-cell">URL</th>
+                        <th class="title-cell">Title</th>
+                        <th class="visit-count-cell">Visit Count</th>
+                        <th class="last-visit-cell">Last Visit Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if tor_history %}
+                        {% for url, title, visit_count, last_visit in tor_history %}
+                            <tr>
+                                <td class="url-cell" data-label="URL">{{ url }}</td>
+                                <td class="title-cell" data-label="Title">{{ title }}</td>
+                                <td class="visit-count-cell" data-label="Visit Count">{{ visit_count }}</td>
+                                <td class="last-visit-cell" data-label="Last Visit Time">{{ last_visit }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-message">No Tor history available.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="buttons">
+                <form action="/download_history" method="post">
+                    <input type="hidden" name="browser" value="tor">
+                    <button class="download-btn" type="submit">Download Tor History CSV</button>
+                </form>
+                <form action="{{ url_for('send_history_for_prediction') }}" method="post" class="analysis-form">
+                    <input type="hidden" name="browser" value="tor">
+                    <button class="analysis-btn" type="submit">Analyze Tor History</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Opera Section -->
+        <div id="opera" class="tab-content">
+            <h2>Opera History</h2>
+            <table id="opera-table">
+                <thead>
+                    <tr>
+                        <th class="url-cell">URL</th>
+                        <th class="title-cell">Title</th>
+                        <th class="visit-count-cell">Visit Count</th>
+                        <th class="last-visit-cell">Last Visit Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if opera_history %}
+                        {% for url, title, visit_count, last_visit in opera_history %}
+                            <tr>
+                                <td class="url-cell" data-label="URL">{{ url }}</td>
+                                <td class="title-cell" data-label="Title">{{ title }}</td>
+                                <td class="visit-count-cell" data-label="Visit Count">{{ visit_count }}</td>
+                                <td class="last-visit-cell" data-label="Last Visit Time">{{ last_visit }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-message">No Opera history available.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="buttons">
+                <form action="/download_history" method="post">
+                    <input type="hidden" name="browser" value="opera">
+                    <button class="download-btn" type="submit">Download Opera History CSV</button>
+                </form>
+                <form action="{{ url_for('send_history_for_prediction') }}" method="post" class="analysis-form">
+                    <input type="hidden" name="browser" value="opera">
+                    <button class="analysis-btn" type="submit">Analyze Opera History</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Brave Section -->
+        <div id="brave" class="tab-content">
+            <h2>Brave History</h2>
+            <table id="brave-table">
+                <thead>
+                    <tr>
+                        <th class="url-cell">URL</th>
+                        <th class="title-cell">Title</th>
+                        <th class="visit-count-cell">Visit Count</th>
+                        <th class="last-visit-cell">Last Visit Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if brave_history %}
+                        {% for url, title, visit_count, last_visit in brave_history %}
+                            <tr>
+                                <td class="url-cell" data-label="URL">{{ url }}</td>
+                                <td class="title-cell" data-label="Title">{{ title }}</td>
+                                <td class="visit-count-cell" data-label="Visit Count">{{ visit_count }}</td>
+                                <td class="last-visit-cell" data-label="Last Visit Time">{{ last_visit }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-message">No Brave history available.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="buttons">
+                <form action="/download_history" method="post">
+                    <input type="hidden" name="browser" value="brave">
+                    <button class="download-btn" type="submit">Download Brave History CSV</button>
+                </form>
+                <form action="{{ url_for('send_history_for_prediction') }}" method="post" class="analysis-form">
+                    <input type="hidden" name="browser" value="brave">
+                    <button class="analysis-btn" type="submit">Analyze Brave History</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Firefox Section -->
+        <div id="firefox" class="tab-content">
+            <h2>Firefox History</h2>
+            <table id="firefox-table">
+                <thead>
+                    <tr>
+                        <th class="url-cell">URL</th>
+                        <th class="title-cell">Title</th>
+                        <th class="visit-count-cell">Visit Count</th>
+                        <th class="last-visit-cell">Last Visit Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if firefox_history %}
+                        {% for url, title, visit_count, last_visit in firefox_history %}
+                            <tr>
+                                <td class="url-cell" data-label="URL">{{ url }}</td>
+                                <td class="title-cell" data-label="Title">{{ title }}</td>
+                                <td class="visit-count-cell" data-label="Visit Count">{{ visit_count }}</td>
+                                <td class="last-visit-cell" data-label="Last Visit Time">{{ last_visit }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-message">No Firefox history available.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <div class="buttons">
+                <form action="/download_history" method="post">
+                    <input type="hidden" name="browser" value="firefox">
+                    <button class="download-btn" type="submit">Download Firefox History CSV</button>
+                </form>
+                <form action="{{ url_for('send_history_for_prediction') }}" method="post" class="analysis-form">
+                    <input type="hidden" name="browser" value="firefox">
+                    <button class="analysis-btn" type="submit">Analyze Firefox History</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            function showTabContent(tabId) {
+                tabContents.forEach(content => {
+                    if (content.id === tabId) {
+                        content.classList.add('active');
+                        // Check if table has any rows to show/hide buttons
+                        const hasData = content.querySelector('tbody').querySelectorAll('tr').length > 0;
+                        content.querySelector('.buttons').style.display = hasData ? 'block' : 'none';
+                    } else {
+                        content.classList.remove('active');
+                        content.querySelector('.buttons').style.display = 'none';
+                    }
+                });
+            }
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    showTabContent(tab.getAttribute('data-tab'));
+                });
+            });
+
+            // Set default tab
+            if (tabs.length > 0) {
+                tabs[0].classList.add('active');
+                showTabContent(tabs[0].getAttribute('data-tab'));
+            }
+        });
+    </script>
+</body>
+</html>

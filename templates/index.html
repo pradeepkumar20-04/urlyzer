@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browsing History Input</title>
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(-20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+    
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    
+        @keyframes backgroundShift {
+            0% { background-position: center; }
+            50% { background-position: left; }
+            100% { background-position: center; }
+        }
+    
+        body {
+            font-family: 'Arial', sans-serif;
+            transition: background 1s ease-in-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url('/static/2.png'); /* Replace with the path to your image */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            animation: fadeIn 1.5s ease, backgroundShift 15s infinite linear;
+        }
+    
+        .container {
+            margin-left: 20px; /* Adjust the value as needed */
+        }
+    
+        h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #fff9f9;
+            z-index: 1;
+            font-weight: 700;
+            animation: fadeIn 2s ease;
+        }
+    
+        form {
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            text-align: left;
+            z-index: 1;
+            width: 100%;
+            max-width: 500px;
+            background-color: rgba(70, 63, 63, 0.856); /* Adjust the alpha value (0.7) for desired transparency */
+            transition: transform 1.2s ease, background-color 1s ease;
+            animation: fadeIn 2s ease;
+        }
+    
+        form.move-right {
+            transform: translateX(380px); /* Adjust the value as needed */
+            background-color: rgba(253, 253, 253, 0.096);
+        }
+    
+        label {
+            display: block;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            color: #f8f8f8;
+            cursor: pointer;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+    
+        label:hover {
+            color: #080800;
+            transform: translateX(5px);
+        }
+    
+        input[type="radio"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+            transition: transform 0.3s ease;
+        }
+    
+        input[type="radio"]:checked {
+            transform: scale(1.4);
+        }
+    
+        button, a {
+            background-color: #007BFF;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+    
+        button:hover, a:hover {
+            background-color: #0056b3;
+            transform: scale(1.1);
+        }
+    
+        .chrome-bg { background-image: url('{{ url_for('static', filename='chrome.png') }}'); }
+        .edge-bg { background-image: url('{{ url_for('static', filename='edge.png') }}'); }
+        .tor-bg { background-image: url('{{ url_for('static', filename='tor.png') }}'); }
+        .opera-bg { background-image: url('{{ url_for('static', filename='opera.png') }}'); }
+        .brave-bg { background-image: url('{{ url_for('static', filename='brave.png') }}'); }
+        .firefox-bg { background-image: url('{{ url_for('static', filename='firefox.png') }}'); }
+    
+        .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 20px;
+            animation: fadeIn 1s ease;
+        }
+    
+        .link-container {
+            margin-top: 20px;
+        }
+    
+        .p {
+            color: rgb(247, 247, 247);
+        }
+    
+        .custom-icon {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+            margin-right: 10px;
+            animation: fadeIn 1.5s ease;
+        }
+    </style>
+    
+    <script>
+        function changeBackground() {
+            var selectedBrowser = document.querySelector('input[name="browser"]:checked').value;
+            var backgrounds = ['chrome-bg', 'edge-bg', 'tor-bg', 'opera-bg', 'brave-bg', 'firefox-bg'];
+            document.body.classList.remove(...backgrounds);
+            document.body.classList.add(selectedBrowser + '-bg');
+
+            // Add animation effect
+            var form = document.getElementById('view-history-form');
+            form.classList.add('move-right');
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <form id="view-history-form" action="/view_history" method="POST" enctype="multipart/form-data">
+            <h1>Select the Browser to View History</h1>
+            <label>
+                <input type="radio" name="browser" value="chrome" onclick="changeBackground()">
+                <i class="fab fa-chrome"></i> Chrome
+            </label>
+            <label>
+                <input type="radio" name="browser" value="edge" onclick="changeBackground()">
+                <i class="fab fa-edge"></i> Edge
+            </label>
+            <label>
+                <input type="radio" name="browser" value="tor" onclick="changeBackground()">
+                <i class="fas fa-user-secret"></i> Tor
+            </label>
+            <label>
+                <input type="radio" name="browser" value="opera" onclick="changeBackground()">
+                <i class="fab fa-opera"></i> Opera
+            </label>
+            <label>
+                <input type="radio" name="browser" value="brave" onclick="changeBackground()">
+                <img src="{{url_for('static',filename='brave1.png')}}" class="custom-icon" alt="Brave icon">Brave
+            </label>
+            <label>
+                <input type="radio" name="browser" value="firefox" onclick="changeBackground()">
+                <i class="fab fa-firefox"></i> Firefox
+            </label>
+            <button type="submit">View History</button>
+            <div class="link-container">
+                <p class="p">If you have history to analyze, Click <a href="/upload">Here</a></p>
+            </div>
+        </form>
+    </div>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+</body>
+</html>
