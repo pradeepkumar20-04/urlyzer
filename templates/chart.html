@@ -136,9 +136,8 @@
         }
 
         .heatmap-cell {
-            cursor: pointer;
-            transition: transform 0.3s ease;
-        }
+    cursor: pointer;
+    transition: transform 0.3s ease, fill 0.3s ease;}
 
         .heatmap-cell:hover {
             transform: scale(1.1);
@@ -484,12 +483,22 @@ function drag(simulation) {
         });
 }
 
+const urlData = JSON.parse(sessionStorage.getItem('urlData'));
+// Ensure dateData is retrieved
+
 const heatmapContainer = d3.select("#heatmap");
 const heatmapSvg = d3.select("#heatmapSvg")
     .attr("width", 7 * cellSize + 1000)
     .attr("height", 24 * cellSize + 50);
 
-const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([5, 10]);
+const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([1, 10]);
+
+const formatTime24Hour = d => `${d}`;
+const formatTimeAMPM = d => {
+    const hour = d % 12 || 12;
+    const period = d < 12 ? 'AM' : 'PM';
+    return `${hour} ${period}`;
+};
 
 function createHeatmap(selectedWeek) {
     heatmapSvg.selectAll("*").remove();
@@ -504,6 +513,7 @@ function createHeatmap(selectedWeek) {
         .attr("x", 50)
         .attr("y", (d, i) => i * cellSize + cellSize + 10)
         .style("text-anchor", "end")
+        .style("font-size", "12px")
         .text(d => d);
 
     heatmapSvg.selectAll(".timeLabel")
@@ -512,19 +522,28 @@ function createHeatmap(selectedWeek) {
         .attr("x", (d, i) => i * cellSize + 85)
         .attr("y", 20)
         .style("text-anchor", "middle")
-        .text(d => d);
+        .style("font-size", "12px")
+        .text(d => `${formatTimeAMPM(d)}`); // Rotate labels
 
-    const dataForWeek = Object.entries(domainData).reduce((acc, [domain, count]) => {
-        const date = new Date(dateData[domain]);
-        if (getWeek(date) === selectedWeek) {
-            const dayIndex = date.getDay() - 1; // Monday as index 0
-            const hourIndex = date.getHours();
-            if (acc[dayIndex] === undefined) acc[dayIndex] = {};
-            if (acc[dayIndex][hourIndex] === undefined) acc[dayIndex][hourIndex] = { count: 0, date: date, domain: domain };
-            acc[dayIndex][hourIndex].count += count;
+    // Filter data for the year 2024 and selected week
+    const dataForWeek = Object.entries(urlData).reduce((acc, [url, count]) => {
+        const date = new Date(dateData[url]);
+        if (date.getFullYear() === 2024) { // Filter by year
+            const weekOfYear = getWeek(date);
+            if (weekOfYear === selectedWeek) {
+                // Adjust day index to ensure it's within bounds
+                const dayIndex = (date.getDay() === 0 ? 6 : date.getDay() - 1); // Adjust Sunday to 6
+
+                const hourIndex = date.getHours();
+                if (acc[dayIndex] === undefined) acc[dayIndex] = {};
+                if (acc[dayIndex][hourIndex] === undefined) acc[dayIndex][hourIndex] = { count: 0, date: date, url: url };
+                acc[dayIndex][hourIndex].count += count;
+            }
         }
         return acc;
     }, {});
+
+    console.log(dataForWeek); // Check if today's data is included in this object
 
     const cells = heatmapSvg.selectAll(".cell")
         .data(daysOfWeek.flatMap((day, dayIndex) =>
@@ -533,7 +552,7 @@ function createHeatmap(selectedWeek) {
                 hour,
                 count: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].count : 0,
                 date: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].date : null,
-                domain: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].domain : null
+                url: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].url : null
             }))
         ))
         .enter().append("rect")
@@ -542,8 +561,10 @@ function createHeatmap(selectedWeek) {
         .attr("width", cellSize)
         .attr("height", cellSize)
         .style("fill", d => colorScale(d.count))
-        .style("stroke", "#333")  // Adding stroke color for grid lines
-        .style("stroke-width", "1px")  // Stroke width for grid lines
+        .style("stroke", "#333")
+        .style("stroke-width", "1px")
+        .style("rx", "4px") // Rounded corners
+        .style("ry", "4px") // Rounded corners
         .on("mouseover", function(event, d) {
             if (d.date) {
                 d3.select("#tooltip")
@@ -558,11 +579,11 @@ function createHeatmap(selectedWeek) {
                 .style("opacity", 0);
         })
         .on("contextmenu", function(event, d) {
-            event.preventDefault(); // Prevent the default right-click menu
+            event.preventDefault();
 
-            if (d.count > 0 && d.domain && d.date) {
-                const details = `Domain: ${d.domain}<br>Visit Count: ${d.count}<br>Date: ${formatDate(d.date)}<br>Time: ${d.hour}:00`;
-                
+            if (d.count > 0 && d.url && d.date) {
+                const details = `URL: ${d.url}<br>Visit Count: ${d.count}<br>Date: ${formatDate(d.date)}<br>Time: ${d.hour}:00`;
+
                 d3.select("#details")
                     .style("opacity", 1)
                     .html(details);
@@ -573,14 +594,14 @@ function createHeatmap(selectedWeek) {
 function getWeek(date) {
     const startOfYear = new Date(date.getFullYear(), 0, 1);
     const pastDaysOfYear = (date - startOfYear) / 86400000;
-    return Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7);
+    return Math.ceil((pastDaysOfYear + startOfYear.getDay() - 1) / 7);
 }
 
 function populateWeekSelector() {
     const weeks = Array.from(new Set(Object.values(dateData).map(dateStr => {
         const date = new Date(dateStr);
-        return getWeek(date);
-    })));
+        return date.getFullYear() === 2024 ? getWeek(date) : null;
+    }).filter(week => week !== null)));
 
     const weekSelect = document.getElementById("weekSelect");
     weeks.forEach(week => {
@@ -621,7 +642,6 @@ d3.select("#heatmapContainer").append("div")
     .attr("id", "details")
     .style("margin-top", "20px")
     .style("opacity", 0);
-
 
           
                 // Button functionality

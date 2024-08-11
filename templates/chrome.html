@@ -563,6 +563,7 @@
 
     const domainData = {};
     const dateData = {};
+    const urlData = {}; // New object to store data for each URL
 
     rows.forEach(row => {
         const url = row.cells[0].textContent;
@@ -583,11 +584,27 @@
         if (!dateData[domain] || visitDate.getTime() > dateData[domain]) {
             dateData[domain] = visitDate.getTime();
         }
+
+        // Store URL visit count
+        if (!urlData[url]) {
+            urlData[url] = 0;
+        }
+        urlData[url] += visitCount;
+
+        
+
+        // Store visit date (use the latest date for a given URL)
+        if (!dateData[url] || visitDate.getTime() > dateData[url]) {
+            dateData[url] = visitDate.getTime();
+        }
+        console.log(dateData)
     });
 
-    // Save the domain data and date data to session storage
+    // Save the domain data, date data, and URL data to session storage
     sessionStorage.setItem('domainData', JSON.stringify(domainData));
     sessionStorage.setItem('dateData', JSON.stringify(dateData));
+    sessionStorage.setItem('urlData', JSON.stringify(urlData)); // Save URL data
+
 
     // Navigate to the chart page
     window.location.href = '/chart'; // Adjust this URL to match your routing setup
