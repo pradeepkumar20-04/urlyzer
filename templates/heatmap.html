@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload CSV File</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #fff8f89a;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        input[type="file"], select {
+            margin: 10px 0;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        a {
+            display: block;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #007BFF;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        #heatmap, #bubbleChart {
+            margin-top: 30px;
+            position: relative;
+            display: none; /* Initially hidden */
+        }
+        #tooltip {
+            position: absolute;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 5px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 0.9em;
+        }
+        #detailsTable {
+            margin-top: 20px;
+            width: 100%;
+            border-collapse: collapse;
+            display: none;
+        }
+        #detailsTable th, #detailsTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        #detailsTable th {
+            background-color: #007BFF;
+            color: white;
+        }
+        .context-menu {
+            display: none;
+            position: absolute;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+        .context-menu ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .context-menu ul li {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .context-menu ul li:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Heatmap Visualization</h1>
+    <button id="toggleHeatmap">Show Heatmap</button>
+    <button id="toggleBubbleChart">Show Bubble Chart</button>
+    <select id="weekSelector" style="display: none;"> <!-- Initially hidden -->
+        <option value="all">All Dates</option>
+    </select>
+    <div id="bubbleChart" style="display:none;"></div>
+    <div id="bubbleChartControls" style="display: none;">
+        <label for="fromDateRange">From Date:</label>
+        <input type="range" id="fromDateRange" name="fromDateRange" min="" max="" step="1">
+        <span id="fromDateLabel">Start Date</span>
+    
+        <label for="toDateRange">To Date:</label>
+        <input type="range" id="toDateRange" name="toDateRange" min="" max="" step="1">
+        <span id="toDateLabel">End Date</span>
+    </div>
+    
+    
+
+    <div id="contextMenu" style="display: none;">Context Menu</div>
+    <div id="heatmap"></div>
+    <div id="tooltip"></div>
+    <table id="detailsTable">
+        <thead>
+            <tr>
+                <th>Domain</th>
+                <th>URL</th>
+                <th>Visit Count</th>
+                <th>Date and Time</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <div class="context-menu" id="contextMenu">
+        <ul>
+            <li onclick="viewOnTable()">View on Table</li>
+        </ul>
+    </div>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <script>
+        let currentCellData = []; // Change to an array to store multiple entries
+        let heatmapData = [];  // Declare a global variable to store heatmap data
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // Retrieve the data from sessionStorage
+            const csvData = sessionStorage.getItem('csvData');
+
+            if (csvData) {
+                processData(csvData);
+            } else {
+                alert("No data found for heatmap.");
+            }
+
+            function processData(csvData) {
+                const rows = d3.csvParse(csvData);
+                heatmapData = [];  // Reset heatmap data
+                const parseDate = d3.timeParse("%Y-%m-%d %H:%M:%S");
+                const dateRanges = new Set();
+
+                rows.forEach(row => {
+                    const date = parseDate(row['date and time']);
+                    if (date) {
+                        const startDate = d3.timeWeek.floor(date);
+                        const endDate = d3.timeWeek.offset(startDate, 1);
+                        dateRanges.add(`${d3.timeFormat("%Y-%m-%d")(startDate)}|${d3.timeFormat("%Y-%m-%d")(endDate)}`);
+                        const day = date.getDay();
+                        const hour = date.getHours();
+                        const visitCount = +row['visit count'];
+                        const domain = extractDomain(row['url']);  // Extract domain from URL
+                        heatmapData.push({ day, hour, visitCount, domain, url: row['url'], date: row['date and time'] });
+                    } else {
+                        console.error("Date parsing failed for:", row['date and time']);
+                    }
+                });
+
+                populateDateSelector(dateRanges);
+                // No call to createHeatmap here
+            }
+
+            function extractDomain(url) {
+                const parser = document.createElement('a');
+                parser.href = url;
+                return parser.hostname;
+            }
+
+            function populateDateSelector(dateRanges) {
+                const weekSelector = document.getElementById('weekSelector');
+                weekSelector.innerHTML = '';  // Clear existing options
+
+                dateRanges.forEach(range => {
+                    const [startDateStr, endDateStr] = range.split('|');
+                    const option = document.createElement('option');
+                    option.value = range;
+                    option.text = `${startDateStr} to ${endDateStr}`;
+                    weekSelector.add(option);
+                });
+
+                // Add an "All Dates" option if needed
+                const allOption = document.createElement('option');
+                allOption.value = 'all';
+                allOption.text = 'All Dates';
+                weekSelector.add(allOption);
+            }
+
+            function createHeatmap() {
+                console.log("Creating heatmap with data:", heatmapData); // Debugging
+
+                const selectedRange = document.getElementById('weekSelector').value;
+                console.log("Selected range:", selectedRange); // Debugging
+
+                let filteredData;
+
+                if (selectedRange === "all") {
+                    filteredData = heatmapData;
+                } else {
+                    const [startDateStr, endDateStr] = selectedRange.split('|');
+                    const startDate = d3.timeParse("%Y-%m-%d")(startDateStr);
+                    const endDate = d3.timeParse("%Y-%m-%d")(endDateStr);
+
+                    filteredData = heatmapData.filter(d => {
+                        const date = d3.timeParse("%Y-%m-%d %H:%M:%S")(d.date);
+                        return date >= startDate && date < endDate;
+                    });
+                }
+
+                console.log("Filtered data:", filteredData); // Debugging
+
+                d3.select("#heatmap").selectAll("*").remove();
+
+                const margin = { top: 50, right: 0, bottom: 100, left: 30 };
+                const width = 1000;
+                const height = 320;
+                const gridSize = Math.floor(width / 24);
+                const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                const hours = d3.range(24);
+
+                const svg = d3.select("#heatmap")
+                    .append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                    .append("g")
+                    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+                const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
+                    .domain([0, d3.max(filteredData, d => d.visitCount)]);
+
+                const emptyCellColor = "#f0f0f0";  // Color for empty cells
+
+                svg.selectAll(".dayLabel")
+                    .data(days)
+                    .enter().append("text")
+                    .text(d => d)
+                    .attr("x", -5)
+                    .attr("y", (d, i) => i * gridSize)
+                    .style("text-anchor", "end")
+                    .attr("transform", `translate(-6, ${gridSize / 1.5})`);
+
+                svg.selectAll(".hourLabel")
+                    .data(hours)
+                    .enter().append("text")
+                    .text(d => d)
+                    .attr("x", (d, i) => i * gridSize)
+                    .attr("y", height)
+                    .style("text-anchor", "middle")
+                    .attr("transform", `translate(${gridSize / 2}, -6)`);
+
+                const gridData = d3.rollup(
+                    filteredData,
+                    v => d3.sum(v, d => d.visitCount),
+                    d => d.day,
+                    d => d.hour
+                );
+
+                svg.selectAll(".hour")
+                    .data(d3.range(7).flatMap(day =>
+                        d3.range(24).map(hour => ({
+                            day,
+                            hour,
+                            visitCount: gridData.get(day)?.get(hour) || 0
+                        }))
+                    ))
+                    .enter().append("rect")
+                    .attr("x", d => d.hour * gridSize)
+                    .attr("y", d => d.day * gridSize)
+                    .attr("class", "hour")
+                    .attr("width", gridSize)
+                    .attr("height", gridSize)
+                    .style("fill", d => d.visitCount > 0 ? colorScale(d.visitCount) : emptyCellColor)  // Apply empty cell color
+                    .style("stroke", "black")  // Set outline color to black
+                    .style("stroke-width", "1px");  // Set outline width to 1px
+
+                svg.selectAll(".hour")
+                    .on("mouseover", function(event, d) {
+                        const data = filteredData.filter(item => item.day === d.day && item.hour === d.hour);
+
+                        if (data.length) {
+                            const maxDomain = data.reduce((acc, item) => item.visitCount > acc.visitCount ? item : acc, { visitCount: 0 });
+                            const totalVisitCount = d3.sum(data, item => item.visitCount);
+
+                            d3.select("#tooltip")
+                                .style("left", (event.pageX + 10) + "px")
+                                .style("top", (event.pageY - 20) + "px")
+                                .style("opacity", 1)
+                                .html(`Domain with Highest Count: ${maxDomain.domain || 'N/A'}<br>Total Visit Count: ${totalVisitCount || 'N/A'}<br>Date and Time: ${data[0].date || 'N/A'}`);
+                        }
+                    })
+                    .on("mouseout", function() {
+                        d3.select("#tooltip").style("opacity", 0);
+                    })
+                    .on("contextmenu", function(event, d) {
+                        event.preventDefault();
+                        currentCellData = filteredData.filter(item => item.day === d.day && item.hour === d.hour);
+                        const contextMenu = document.getElementById('contextMenu');
+                        contextMenu.style.left = `${event.pageX}px`;
+                        contextMenu.style.top = `${event.pageY}px`;
+                        contextMenu.style.display = 'block';
+                    });
+
+                const legend = svg.selectAll(".legend")
+                    .data([0].concat(colorScale.ticks(6)))
+                    .enter().append("g")
+                    .attr("class", "legend")
+                    .attr("transform", (d, i) => `translate(${i * gridSize}, ${height + margin.top})`);
+
+                legend.append("rect")
+                    .attr("x", 0)
+                    .attr("y", 0)
+                    .attr("width", gridSize)
+                    .attr("height", gridSize / 2)
+                    .style("fill", d => colorScale(d));
+
+                legend.append("text")
+                    .attr("x", gridSize / 2)
+                    .attr("y", gridSize / 2 + 10)
+                    .style("text-anchor", "middle")
+                    .text(d => Math.round(d));
+
+                document.addEventListener('click', function() {
+                    document.getElementById('contextMenu').style.display = 'none';
+                });
+            }
+
+            document.getElementById('toggleHeatmap').addEventListener('click', function() {
+                const heatmapDiv = document.getElementById('heatmap');
+                const weekSelector = document.getElementById('weekSelector');
+                
+                if (heatmapDiv.style.display === 'none') {
+                    heatmapDiv.style.display = 'block';
+                    weekSelector.style.display = 'block'; // Show week selector
+                    createHeatmap(); // Ensure heatmap is created when shown
+                } else {
+                    heatmapDiv.style.display = 'none';
+                    weekSelector.style.display = 'none'; // Hide week selector
+                }
+            });
+
+            document.getElementById('weekSelector').addEventListener('change', function() {
+                console.log("Week selector changed."); // Debugging
+                createHeatmap();
+            });
+
+
+        });
+        
+        function viewOnTable() {
+                const table = document.getElementById('detailsTable');
+                const tbody = table.querySelector('tbody');
+                tbody.innerHTML = '';  // Clear previous data
+
+                if (currentCellData.length > 0) {
+                    currentCellData.forEach(data => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${data.domain || 'N/A'}</td><td>${data.url || 'N/A'}</td><td>${data.visitCount || 'N/A'}</td><td>${data.date || 'N/A'}</td>`;
+                        tbody.appendChild(row);
+                    });
+
+                    table.style.display = 'table';
+                }
+            }
+    </script>
+       <script src="/static/js/bubblechart.js"></script>
+</body>
+</html>
