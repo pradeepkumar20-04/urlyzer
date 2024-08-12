@@ -17,7 +17,6 @@
             min-height: 100vh;
             position: relative;
         }
-        /* New video background styles */
         .background-video {
             position: absolute;
             top: 0;
@@ -26,19 +25,34 @@
             height: 100%;
             object-fit: cover; /* Ensures the video covers the entire background */
             z-index: -1;
-            opacity: 1; /* Optional: Adjust the opacity for a softer effect */
+            opacity: 1; /* Full visibility of the video */
+        }
+        /* Clarify animation for the logo only */
+        @keyframes clarify {
+            0% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+        }
+        .logo {
+            width: 1000px;
+            height: auto;
+            margin-bottom: 20px;
+            animation: clarify 3s ease-in-out infinite; /* Apply the clarify animation */
         }
         .welcome-container {
             text-align: center;
             padding: 50px;
             animation: fadeIn 2s ease-in;
             z-index: 1;
-        }
-        .logo {
-            width: 500px;
-            height: auto;
-            margin-bottom: 20px;
-            animation: fadeIn 2s ease-in;
         }
         .welcome-title {
             font-size: 2.5em;
@@ -113,7 +127,7 @@
     </video>
 
     <div class="welcome-container">
-        <img src="/static/logo.gif" alt="URLyzer" class="logo">
+        <img src="/static/logo.png" alt="URLyzer" class="logo"> <!-- Updated to PNG -->
         <div class="welcome-title">URLyzer: Browser History and URL Security Insights</div>
         <div class="welcome-description">
             Welcome to URLyzer! Analyze your browser history and get insights on URL security with our advanced tools.
@@ -123,7 +137,7 @@
         </div>
     </div>
     <footer class="footer">
-        &copy; 2024 URLyzer. All rights reserved.
+        &copy; 2024 Future Web. All rights reserved.
     </footer>
 </body>
 </html>

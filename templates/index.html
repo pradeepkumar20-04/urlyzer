@@ -160,41 +160,69 @@
 </head>
 <body>
     <div class="container">
-        <form id="view-history-form" action="/view_history" method="POST" enctype="multipart/form-data">
+        <form id="view-history-form" action="/view_history" method="POST" enctype="multipart/form-data" onsubmit="return validateForm()">
             <h1>Select the Browser to View History</h1>
+            <!-- Radio buttons for browser selection -->
             <label>
                 <input type="radio" name="browser" value="chrome" onclick="changeBackground()">
-                <i class="fab fa-chrome"></i> Chrome
+                <img src="{{ url_for('static', filename='chrome1.png') }}" class="custom-icon" alt="Chrome icon">Chrome
             </label>
             <label>
                 <input type="radio" name="browser" value="edge" onclick="changeBackground()">
-                <i class="fab fa-edge"></i> Edge
+                <img src="{{ url_for('static', filename='edge1.png') }}" class="custom-icon" alt="Edge icon">Edge
             </label>
             <label>
                 <input type="radio" name="browser" value="tor" onclick="changeBackground()">
-                <i class="fas fa-user-secret"></i> Tor
+                <img src="{{ url_for('static', filename='tor1.png') }}" class="custom-icon" alt="Tor icon">Tor
             </label>
             <label>
                 <input type="radio" name="browser" value="opera" onclick="changeBackground()">
-                <i class="fab fa-opera"></i> Opera
+                <img src="{{ url_for('static', filename='opera1.png') }}" class="custom-icon" alt="Opera icon">Opera
             </label>
             <label>
                 <input type="radio" name="browser" value="brave" onclick="changeBackground()">
-                <img src="{{url_for('static',filename='brave1.png')}}" class="custom-icon" alt="Brave icon">Brave
+                <img src="{{ url_for('static', filename='brave1.png') }}" class="custom-icon" alt="Brave icon">Brave
             </label>
             <label>
                 <input type="radio" name="browser" value="firefox" onclick="changeBackground()">
-                <i class="fab fa-firefox"></i> Firefox
+                <img src="{{ url_for('static', filename='firefox1.png') }}" class="custom-icon" alt="Firefox icon">Firefox
             </label>
-            <button type="submit">View History</button>
+            <div>
+                <button type="submit">View History</button>
+                <span id="error-message" class="error-message" style="color: red; margin-left: 10px;font-size: 14px;"></span>
+            </div>
             <div class="link-container">
                 <p class="p">If you have history to analyze, Click <a href="/upload">Here</a></p>
             </div>
         </form>
     </div>
-
+    
     {% if error %}
         <div class="error">{{ error }}</div>
     {% endif %}
-</body>
-</html>
+    
+    <script>
+        function validateForm() {
+            const radios = document.querySelectorAll('input[name="browser"]');
+            const errorMessage = document.getElementById('error-message');
+            let selected = false;
+    
+            for (const radio of radios) {
+                if (radio.checked) {
+                    selected = true;
+                    break;
+                }
+            }
+    
+            if (!selected) {
+                errorMessage.textContent = "Please select at least one browser to view history.";
+                return false;
+            }
+    
+            errorMessage.textContent = ""; // Clear any previous error message
+            return true;
+        }
+    </script>
+    </body>
+    </html>
+    
