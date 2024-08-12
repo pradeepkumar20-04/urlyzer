@@ -201,6 +201,9 @@ def predict_urls():
         # For AJAX requests
         return jsonify(results)
 
+@app.route('/heatmap')
+def heat():
+    return render_template('heatmap.html')
 
 @app.route('/')
 def home():
@@ -382,13 +385,13 @@ def download_history():
     if not history:
         return "No history available for download", 404
 
-    # Extract only the URLs from the history
-    urls = [[row[0]] for row in history]
+    # Extract the desired columns from the history
+    urls = [[row[0], row[1], row[2], row[3]] for row in history]
 
     # Create a CSV in memory
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['url'])
+    writer.writerow(['url', 'title', 'visit count', 'date and time'])
     writer.writerows(urls)
 
     output.seek(0)
@@ -397,6 +400,7 @@ def download_history():
     response.headers['Content-type'] = 'text/csv'
     
     return response
+
 
 if __name__ == '__main__':
     app.run(debug=True)
