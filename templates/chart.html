@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualization Dashboard</title>
+    
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -150,6 +151,26 @@
             color: #ccc;
         }
 
+        #contextMenu {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+#dataTable {
+    font-family: Arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+#dataTable th, #dataTable td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+#dataTable th {
+    background-color: #f2f2f2;
+    text-align: left;
+}
     </style>
 </head>
 <body>
@@ -183,6 +204,7 @@
                 <label for="weekSelect">Select Week:</label>
                 <select id="weekSelect"></select>
             </div>
+            
             <svg id="heatmapSvg"></svg>
             <div id="heatmapContainer"></div>
         </div>
@@ -488,10 +510,11 @@ const urlData = JSON.parse(sessionStorage.getItem('urlData'));
 
 const heatmapContainer = d3.select("#heatmap");
 const heatmapSvg = d3.select("#heatmapSvg")
-    .attr("width", 7 * cellSize + 1000)
-    .attr("height", 24 * cellSize + 50);
+    .attr("width", 1200)
+    .attr("height", 350);
 
-const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([1, 10]);
+const colorScale = d3.scaleSequential(d3.interpolateOranges).domain([0, 10]);
+
 
 const formatTime24Hour = d => `${d}`;
 const formatTimeAMPM = d => {
@@ -535,24 +558,27 @@ function createHeatmap(selectedWeek) {
                 const dayIndex = (date.getDay() === 0 ? 6 : date.getDay() - 1); // Adjust Sunday to 6
 
                 const hourIndex = date.getHours();
-                if (acc[dayIndex] === undefined) acc[dayIndex] = {};
-                if (acc[dayIndex][hourIndex] === undefined) acc[dayIndex][hourIndex] = { count: 0, date: date, url: url };
-                acc[dayIndex][hourIndex].count += count;
+                if (!acc[dayIndex]) acc[dayIndex] = {};
+                if (!acc[dayIndex][hourIndex]) acc[dayIndex][hourIndex] = [];
+
+                // Store each URL and its details
+                acc[dayIndex][hourIndex].push({
+                    count,
+                    date,
+                    url,
+                    domain: new URL(url).hostname
+                });
             }
         }
         return acc;
     }, {});
-
-    console.log(dataForWeek); // Check if today's data is included in this object
 
     const cells = heatmapSvg.selectAll(".cell")
         .data(daysOfWeek.flatMap((day, dayIndex) =>
             timesOfDay.map(hour => ({
                 day: dayIndex,
                 hour,
-                count: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].count : 0,
-                date: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].date : null,
-                url: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour].url : null
+                details: (dataForWeek[dayIndex] && dataForWeek[dayIndex][hour]) ? dataForWeek[dayIndex][hour] : [],
             }))
         ))
         .enter().append("rect")
@@ -560,16 +586,16 @@ function createHeatmap(selectedWeek) {
         .attr("y", d => d.day * cellSize + 30)
         .attr("width", cellSize)
         .attr("height", cellSize)
-        .style("fill", d => colorScale(d.count))
+        .style("fill", d => colorScale(d.details.reduce((sum, detail) => sum + detail.count, 0)))
         .style("stroke", "#333")
         .style("stroke-width", "1px")
         .style("rx", "4px") // Rounded corners
         .style("ry", "4px") // Rounded corners
         .on("mouseover", function(event, d) {
-            if (d.date) {
+            if (d.details.length > 0) {
                 d3.select("#tooltip")
                     .style("opacity", 1)
-                    .html(`Count: ${d.count}<br>Date: ${formatDate(d.date)}<br>Time: ${d.hour}:00`)
+                    .html(`Total Count: ${d.details.reduce((sum, detail) => sum + detail.count, 0)}<br>Time: ${d.hour}:00`)
                     .style("left", (event.pageX + 5) + "px")
                     .style("top", (event.pageY - 28) + "px");
             }
@@ -581,14 +607,99 @@ function createHeatmap(selectedWeek) {
         .on("contextmenu", function(event, d) {
             event.preventDefault();
 
-            if (d.count > 0 && d.url && d.date) {
-                const details = `URL: ${d.url}<br>Visit Count: ${d.count}<br>Date: ${formatDate(d.date)}<br>Time: ${d.hour}:00`;
+            if (d.details.length > 0) {
+                // Create the context menu
+                const contextMenu = d3.select("#contextMenu");
+                if (contextMenu.empty()) {
+                    d3.select("body").append("div")
+                        .attr("id", "contextMenu")
+                        .style("position", "absolute")
+                        .style("z-index", "10")
+                        .style("visibility", "hidden")
+                        .style("background", "#f9f9f9")
+                        .style("border", "1px solid #ccc")
+                        .style("padding", "5px")
+                        .style("border-radius", "4px");
+                }
 
-                d3.select("#details")
-                    .style("opacity", 1)
-                    .html(details);
+                d3.select("#contextMenu")
+                    .style("visibility", "visible")
+                    .style("left", `${event.pageX}px`)
+                    .style("top", `${event.pageY}px`)
+                    .html("")
+                    .append("div")
+                    .text("View on Table")
+                    .style("cursor", "pointer")
+                    .on("click", () => {
+                        d3.select("#contextMenu").style("visibility", "hidden");
+                        displayTable(d.details);
+                    });
+
+                d3.select("body").on("click", () => {
+                    d3.select("#contextMenu").style("visibility", "hidden");
+                });
             }
         });
+}
+
+function displayTable(details) {
+    // Remove existing table if it exists
+    d3.select("#dataTable").remove();
+
+    // Create a new table
+    const table = d3.select("#heatmapContainer")
+        .append("table")
+        .attr("id", "dataTable")
+       
+        .style("border-collapse", "collapse")
+        .style("width", "100%");
+
+    // Add table header
+    const thead = table.append("thead");
+    thead.append("tr")
+        .selectAll("th")
+        .data(["URL", "Domain", "Date", "Time", "Visit Count"])
+        .enter()
+        .append("th")
+        .style("border", "1px solid #ddd")
+        .style("padding", "8px")
+        .style("background-color", "#f2f2f2")
+        .text(d => d);
+
+    // Add table body
+    const tbody = table.append("tbody");
+
+    // Add the details data to the table
+    details.forEach(detail => {
+        const row = tbody.append("tr");
+
+        row.append("td")
+            .style("border", "1px solid #ddd")
+            .style("padding", "8px")
+            .style("word-wrap", "break-word") // Add text wrapping
+            .style("max-width", "200px") // Set a maximum width for the URL column
+            .text(detail.url);
+
+        row.append("td")
+            .style("border", "1px solid #ddd")
+            .style("padding", "8px")
+            .text(detail.domain);
+
+        row.append("td")
+            .style("border", "1px solid #ddd")
+            .style("padding", "8px")
+            .text(formatDate(detail.date));
+
+        row.append("td")
+            .style("border", "1px solid #ddd")
+            .style("padding", "8px")
+            .text(`${String(detail.date.getHours()).padStart(2, '0')}:${String(detail.date.getMinutes()).padStart(2, '0')}`);
+
+        row.append("td")
+            .style("border", "1px solid #ddd")
+            .style("padding", "8px")
+            .text(detail.count);
+    });
 }
 
 function getWeek(date) {
@@ -640,8 +751,8 @@ populateWeekSelector();
 // Add an element below the heatmap to display the details
 d3.select("#heatmapContainer").append("div")
     .attr("id", "details")
-    .style("margin-top", "20px")
     .style("opacity", 0);
+
 
           
                 // Button functionality

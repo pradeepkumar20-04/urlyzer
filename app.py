@@ -142,7 +142,7 @@ def get_history(browser):
     elif browser == 'tor':
         path = r'C:\Users\prath\Desktop\Tor Browser\Browser\TorBrowser\Data\Browser\profile.default\places.sqlite'
     elif browser == 'opera':
-        path = os.path.expanduser('~') + r'\AppData\Roaming\Opera Software\Opera Stable\Default\History'
+        path = os.path.expanduser('~') + r'\AppData\Roaming\Opera Software\Opera GX Stable\History'
     elif browser == 'brave':
         path = os.path.expanduser('~') + r'\AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History'
     elif browser == 'firefox':

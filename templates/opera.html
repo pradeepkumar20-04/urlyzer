@@ -230,10 +230,10 @@
         <table id="opera-table">
             <thead>
                 <tr>
-                    <th class="url-cell">URL</th>
-                    <th class="title-cell">Title</th>
-                    <th class="visit-count-cell">Visit Count</th>
-                    <th class="last-visit-cell">Last Visit Time</th>
+                    <th class="url-cell" onclick="sortTable(0)">URL</th>
+                    <th class="title-cell" onclick="sortTable(1)">Title</th>
+                    <th class="visit-count-cell" onclick="sortTable(2)">Visit Count</th>
+                    <th class="last-visit-cell" onclick="sortTable(3)">Last Visit Time</th>
                 </tr>
             </thead>
             <tbody>
@@ -274,8 +274,45 @@
 </div>
    
 
-    <script>
+<script>
     let debounceTimer;
+    function sortTable(columnIndex) {
+const table = document.getElementById("opera-table");
+const tbody = table.querySelector("tbody");
+const rows = Array.from(tbody.querySelectorAll("tr"));
+const isNumericColumn = columnIndex === 2; // Assuming Visit Count is numeric
+const isDateColumn = columnIndex === 3; // Assuming Last Visit Time is date
+
+let ascending = tbody.getAttribute("data-sort-asc") === "true";
+tbody.setAttribute("data-sort-asc", !ascending);
+
+rows.sort((a, b) => {
+    let aText = a.cells[columnIndex].textContent.trim();
+    let bText = b.cells[columnIndex].textContent.trim();
+
+    if (isNumericColumn) {
+        aText = parseFloat(aText) || 0;
+        bText = parseFloat(bText) || 0;
+    } else if (isDateColumn) {
+        aText = new Date(aText).getTime() || 0;
+        bText = new Date(bText).getTime() || 0;
+    } else {
+        aText = aText.toLowerCase();
+        bText = bText.toLowerCase();
+    }
+
+    if (aText < bText) {
+        return ascending ? -1 : 1;
+    } else if (aText > bText) {
+        return ascending ? 1 : -1;
+    } else {
+        return 0;
+    }
+});
+
+rows.forEach(row => tbody.appendChild(row));
+}
+
 
     function searchTable() {
         clearTimeout(debounceTimer);
@@ -339,44 +376,59 @@
             }
         });
     }
+function navigateToChartPage() {
+const table = document.getElementById('opera-table');
+const rows = table.querySelectorAll('tbody tr');
+
+const domainData = {};
+const dateData = {};
+const urlData = {}; // New object to store data for each URL
+
+rows.forEach(row => {
+    const url = row.cells[0].textContent;
+    const domain = (new URL(url)).hostname; // Extract the domain from the URL
+
+    // Parse the visit date in "YYYY-MM-DD HH:MM:SS" format
+    const dateStr = row.cells[3].textContent;
+    const visitDate = new Date(dateStr); // Use default parsing for "YYYY-MM-DD HH:MM:SS"
+    const visitCount = parseInt(row.cells[2].textContent, 10); // Assuming visit count is in the third cell
+
+    // Store domain visit count
+    if (!domainData[domain]) {
+        domainData[domain] = 0;
+    }
+    domainData[domain] += visitCount;
+
+    // Store visit date (use the latest date for a given domain)
+    if (!dateData[domain] || visitDate.getTime() > dateData[domain]) {
+        dateData[domain] = visitDate.getTime();
+    }
+
+    // Store URL visit count
+    if (!urlData[url]) {
+        urlData[url] = 0;
+    }
+    urlData[url] += visitCount;
 
     
-    function navigateToChartPage() {
-    const table = document.getElementById('opera-table');
-    const rows = table.querySelectorAll('tbody tr');
 
-    const domainData = {};
-    const dateData = {};
+    // Store visit date (use the latest date for a given URL)
+    if (!dateData[url] || visitDate.getTime() > dateData[url]) {
+        dateData[url] = visitDate.getTime();
+    }
+    console.log(dateData)
+});
 
-    rows.forEach(row => {
-        const url = row.cells[0].textContent;
-        const domain = (new URL(url)).hostname; // Extract the domain from the URL
+// Save the domain data, date data, and URL data to session storage
+sessionStorage.setItem('domainData', JSON.stringify(domainData));
+sessionStorage.setItem('dateData', JSON.stringify(dateData));
+sessionStorage.setItem('urlData', JSON.stringify(urlData)); // Save URL data
 
-        // Parse the visit date in "YYYY-MM-DD HH:MM:SS" format
-        const dateStr = row.cells[3].textContent;
-        const visitDate = new Date(dateStr); // Use default parsing for "YYYY-MM-DD HH:MM:SS"
-        const visitCount = parseInt(row.cells[2].textContent, 10); // Assuming visit count is in the third cell
 
-        // Store domain visit count
-        if (!domainData[domain]) {
-            domainData[domain] = 0;
-        }
-        domainData[domain] += visitCount;
-
-        // Store visit date (use the latest date for a given domain)
-        if (!dateData[domain] || visitDate.getTime() > dateData[domain]) {
-            dateData[domain] = visitDate.getTime();
-        }
-    });
-
-    // Save the domain data and date data to session storage
-    sessionStorage.setItem('domainData', JSON.stringify(domainData));
-    sessionStorage.setItem('dateData', JSON.stringify(dateData));
-
-    // Navigate to the chart page
-    window.location.href = '/chart'; // Adjust this URL to match your routing setup
+// Navigate to the chart page
+window.location.href = '/chart'; // Adjust this URL to match your routing setup
 }
 
-    </script>
-    </body>
-    </html>
+</script>
+</body>
+</html>
