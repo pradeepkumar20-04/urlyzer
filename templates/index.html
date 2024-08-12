@@ -40,12 +40,13 @@
         }
     
         .container {
-            margin-left: 20px; /* Adjust the value as needed */
+            margin-left: 10px; /* Adjust the value as needed */
+            margin-top: 50px; /* Adjust the top margin to move container down */
         }
     
         h1 {
-            font-size: 2em;
-            margin-bottom: 20px;
+            font-size: 1.5em; /* Decreased font size */
+            margin-bottom: 15px; /* Decreased margin-bottom */
             text-align: center;
             color: #fff9f9;
             z-index: 1;
@@ -54,27 +55,27 @@
         }
     
         form {
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            padding: 20px; /* Decreased padding */
+            border-radius: 10px; /* Decreased border-radius */
+            box-shadow: 0 4px 8px rgba(219, 219, 219, 0.2); /* Decreased box-shadow */
             text-align: left;
             z-index: 1;
             width: 100%;
-            max-width: 500px;
-            background-color: rgba(70, 63, 63, 0.856); /* Adjust the alpha value (0.7) for desired transparency */
+            max-width: 400px; /* Decreased max-width */
+            background-color: rgba(125, 86, 208, 0.548); /* Adjust the alpha value (0.7) for desired transparency */
             transition: transform 1.2s ease, background-color 1s ease;
             animation: fadeIn 2s ease;
         }
     
         form.move-right {
-            transform: translateX(380px); /* Adjust the value as needed */
+            transform: translateX(190px); /* Adjust the value as needed */
             background-color: rgba(253, 253, 253, 0.096);
         }
     
         label {
             display: block;
-            margin-bottom: 15px;
-            font-size: 1.2em;
+            margin-bottom: 10px; /* Decreased margin-bottom */
+            font-size: 1em; /* Decreased font size */
             color: #f8f8f8;
             cursor: pointer;
             transition: color 0.3s ease, transform 0.3s ease;
@@ -82,26 +83,26 @@
     
         label:hover {
             color: #080800;
-            transform: translateX(5px);
+            transform: translateX(3px); /* Decreased translateX value */
         }
     
         input[type="radio"] {
-            margin-right: 10px;
-            transform: scale(1.2);
+            margin-right: 8px; /* Decreased margin-right */
+            transform: scale(1.1); /* Decreased scale */
             transition: transform 0.3s ease;
         }
     
         input[type="radio"]:checked {
-            transform: scale(1.4);
+            transform: scale(1.2); /* Decreased scale */
         }
     
         button, a {
             background-color: #007BFF;
             color: white;
-            padding: 12px 24px;
+            padding: 8px 16px; /* Decreased padding */
             border: none;
-            border-radius: 5px;
-            font-size: 1em;
+            border-radius: 4px; /* Decreased border-radius */
+            font-size: 0.9em; /* Decreased font size */
             cursor: pointer;
             transition: background-color 0.3s, transform 0.3s;
             text-decoration: none;
@@ -111,7 +112,7 @@
     
         button:hover, a:hover {
             background-color: #0056b3;
-            transform: scale(1.1);
+            transform: scale(1.05); /* Decreased scale */
         }
     
         .chrome-bg { background-image: url('{{ url_for('static', filename='chrome.png') }}'); }
@@ -124,12 +125,12 @@
         .error {
             color: red;
             font-weight: bold;
-            margin-top: 20px;
+            margin-top: 15px; /* Decreased margin-top */
             animation: fadeIn 1s ease;
         }
     
         .link-container {
-            margin-top: 20px;
+            margin-top: 15px; /* Decreased margin-top */
         }
     
         .p {
@@ -137,10 +138,10 @@
         }
     
         .custom-icon {
-            width: 24px;
-            height: 24px;
+            width: 20px; /* Decreased width */
+            height: 20px; /* Decreased height */
             vertical-align: middle;
-            margin-right: 10px;
+            margin-right: 8px; /* Decreased margin-right */
             animation: fadeIn 1.5s ease;
         }
     </style>
@@ -215,7 +216,7 @@
             }
     
             if (!selected) {
-                errorMessage.textContent = "Please select at least one browser to view history.";
+                errorMessage.textContent = "select at least one browser to view history.";
                 return false;
             }
     
@@ -225,4 +226,3 @@
     </script>
     </body>
     </html>
-    
