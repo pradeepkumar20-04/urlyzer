@@ -13,7 +13,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            height: 1000px;
             margin: 0;
             color: #ffffff;
         }
@@ -33,7 +33,7 @@
 
         h1 {
             font-size: 2em;
-            margin-bottom: 20px;
+            margin-bottom: 0;
             text-align: center;
             color: #fff9f9;
             font-weight: 700;
@@ -42,7 +42,7 @@
 
         h2 {
             font-size: 1.5em;
-            margin-top: 20px;
+            margin-top: 0%;
             color: #fff9f9;
             animation: fadeIn 1s ease-in-out;
         }
@@ -220,6 +220,7 @@
 <body>
     <div class="container">
         <h1>Browsing History Viewer</h1>
+        <h2>User : {{user}}</h2>
         <div class="search-box">
             <input type="text" id="searchInput" placeholder="Search by URL or Title...">
             <button onclick="searchTable()">Search</button>
@@ -261,6 +262,8 @@
             </form>
             <form action="{{ url_for('send_history_for_prediction') }}" method="post" class="analysis-form">
                 <input type="hidden" name="browser" value="edge">
+                <input type="hidden" name="user" value="{{user}}">
+                <input type="hidden" name="custom_path" value="{{custom_path}}">
                 <button class="analysis-btn" type="submit">Analyze Edge History</button>
             </form>
             <button class="visualize-btn" onclick="showChart()">Visualize</button>

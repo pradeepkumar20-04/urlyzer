@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browsing History Input - Error</title>
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url('/static/2.gif');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .container {
+            margin-top: 50px;
+        }
+
+        h1 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #fff9f9;
+            font-weight: 700;
+        }
+
+        form {
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(219, 219, 219, 0.2);
+            text-align: left;
+            background-color: rgba(125, 86, 208, 0.548);
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        #path-input-container {
+            display: none; /* Hidden by default */
+        }
+
+        label, button, a {
+            display: block;
+            margin-bottom: 10px;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script>
+        window.onload = function() {
+            const errorMessage = "{{ error }}";
+            if (errorMessage.includes("Path does not exist")) {
+                document.getElementById('path-input-container').style.display = 'block';
+            }
+        };
+    </script>
+</head>
+<body>
+    <div class="container">
+        <form action="/view_history" method="POST">
+            <h1>Error</h1>
+            <div class="error">{{ error }}</div>
+            <div id="path-input-container">
+                <label for="custom-path">Enter Correct Path:</label>
+                <input type="text" id="custom-path" name="custom-path" placeholder="Enter the correct path">
+            </div>
+            <!-- Hidden fields for browser and user -->
+            <input type="hidden" name="browser" value="{{ browser }}">
+            <input type="hidden" name="user" value="{{ user }}">
+            <button type="submit">Try Again</button>
+        </form>
+    </div>
+</body>
+</html>

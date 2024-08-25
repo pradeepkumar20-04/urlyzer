@@ -220,6 +220,7 @@
 <body>
     <div class="container">
         <h1>Browsing History Viewer</h1>
+        <h2>User : {{user}}</h2>
         <div class="search-box">
             <input type="text" id="searchInput" placeholder="Search by URL or Title...">
             <button onclick="searchTable()">Search</button>
@@ -262,6 +263,8 @@
                 </form>
                 <form action="{{ url_for('send_history_for_prediction') }}" method="post" class="analysis-form">
                     <input type="hidden" name="browser" value="brave">
+                    <input type="hidden" name="user" value="{{user}}">
+                    <input type="hidden" name="custom_path" value="{{custom_path}}">
                     <button class="analysis-btn" type="submit">Analyze Brave History</button>
                 </form>
                 <button class="visualize-btn" onclick="showChart()">Visualize</button>

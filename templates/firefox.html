@@ -262,6 +262,8 @@
             </form>
             <form action="{{ url_for('send_history_for_prediction') }}" method="post" class="analysis-form">
                 <input type="hidden" name="browser" value="firefox">
+                <input type="hidden" name="user" value="{{user}}">
+                    <input type="hidden" name="custom_path" value="{{custom_path}}">
                 <button class="analysis-btn" type="submit">Analyze Firefox History</button>
             </form>
             <button class="visualize-btn" onclick="showChart()">Visualize</button>

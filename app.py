@@ -15,6 +15,7 @@ import requests
 import pandas as pd
 import pickle
 import json
+import sys
 from sklearn.feature_extraction.text import TfidfVectorizer
 from flask import flash 
 from scipy.sparse import hstack, csr_matrix
@@ -29,6 +30,7 @@ filename = 'naive_bayes_url_classifier.sav'
 loaded_model = pickle.load(open(filename, 'rb'))
 model = joblib.load('url_classifier_model.pkl')
 vectorizer = joblib.load('tfidf_vectorizer.pkl')
+scaler = joblib.load('feature_scaler.pkl')
 
 
 # Define functions for data preprocessing and prediction
@@ -125,29 +127,70 @@ def shortening_service(url):
     else:
         return 1
 
+def list_users():
+    user_home_dirs = []
+    if os.name == 'nt':  # Windows
+        base_path = 'C:\\Users\\'
+    else:  # macOS/Linux
+        base_path = '/home/'
+
+    user_home_dirs = [name for name in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, name))]
+    return user_home_dirs
+
+@app.route('/get_users', methods=['GET'])
+def get_users():
+    users = list_users()
+    return jsonify(users)
+
+def get_browser_history_path(browser, user, custom_path):
+    base_path = os.path.join('C:\\Users', user)
+    print(custom_path)
+
+    if custom_path and os.path.exists(custom_path):
+        path = custom_path
+        
+    else:
+        if browser == 'chrome':
+            path = base_path + r'\AppData\Local\Google\Chrome\User Data\Default\Histor'
+        elif browser == 'edge':
+            path = base_path + r'\AppData\Local\Microsoft\Edge\User Data\Default\History'
+        elif browser == 'tor':
+            path = base_path + r'\Desktop\Tor Browser\Browser\TorBrowser\Data\Browser\profile.default\places.sqlite'
+        elif browser == 'opera':
+            path = base_path + r'\AppData\Roaming\Opera Software\Opera GX Stable\History'
+        elif browser == 'brave':
+            path = base_path + r'\AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History'
+        elif browser == 'firefox':
+            # Replace <your-profile-folder> with the actual profile folder for the user
+            path = base_path + r'\AppData\Roaming\Mozilla\Firefox\Profiles\<your-profile-folder>\places.sqlite'
+        else:
+            path = ""
+  
+    if not os.path.exists(path):
+        return None, f"Path does not exist: {path}"
+    return path, None
+
 def copy_database_to_temp(path):
     temp_dir = tempfile.gettempdir()
     temp_path = os.path.join(temp_dir, os.path.basename(path))
     shutil.copy2(path, temp_path)
     return temp_path
 
-def get_history(browser):
+def get_history(browser, user, custom_path):
     history = []
-    path = None
+    
+    # Select user if not provided
 
-    if browser == 'chrome':
-        path = os.path.expanduser('~') + r'\AppData\Local\Google\Chrome\User Data\Default\History'
-    elif browser == 'edge':
-        path = os.path.expanduser('~') + r'\AppData\Local\Microsoft\Edge\User Data\Default\History'
-    elif browser == 'tor':
-        path = r'C:\Users\prath\Desktop\Tor Browser\Browser\TorBrowser\Data\Browser\profile.default\places.sqlite'
-    elif browser == 'opera':
-        path = os.path.expanduser('~') + r'\AppData\Roaming\Opera Software\Opera GX Stable\History'
-    elif browser == 'brave':
-        path = os.path.expanduser('~') + r'\AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History'
-    elif browser == 'firefox':
-        path = os.path.expanduser('~') + r'\AppData\Roaming\Mozilla\Firefox\Profiles\<your-profile-folder>\places.sqlite'  # Update with the actual profile folder
+    path, error = get_browser_history_path(browser, user, custom_path)
+    if error:
+        return {'error': error}
 
+    if not path:
+        return {'error': 'Path not found. Please enter the correct path.'}
+        
+
+    if not os.path.exists(path):
+        return {'error': f'Default path for {browser} does not exist. Please enter the correct path.'}
 
     if path and os.path.exists(path):
         retries = 5
@@ -158,7 +201,7 @@ def get_history(browser):
 
                 conn = sqlite3.connect(f'file:{temp_path}?mode=ro', uri=True)
                 cursor = conn.cursor()
-                if browser == 'tor' or browser == 'firefox':
+                if browser in ['tor', 'firefox']:
                     cursor.execute("SELECT url, title, visit_count, datetime(last_visit_date/1000000, 'unixepoch', 'localtime') as last_visit FROM moz_places")
                 else:
                     cursor.execute("SELECT url, title, visit_count, datetime(last_visit_time/1000000-11644473600, 'unixepoch', 'localtime') as last_visit FROM urls")
@@ -176,11 +219,72 @@ def get_history(browser):
             raise sqlite3.OperationalError("Database is locked after multiple attempts")
     
     return history
+    
+@app.route('/view_history', methods=['POST'])
+def view_history():
+    browser = request.form['browser']
+    user = request.form.get('user')
+    custom_path = request.form.get('custom-path')
+    print(user,browser,custom_path)
+    
+    # Fetch the history for the selected browser and user
+  
+        # Define your browser history fetching logic
+    chrome_history = get_history('chrome', user, custom_path) if browser == 'chrome' else []
+    if 'error' in chrome_history:
+        return render_template('error.html', error=chrome_history['error'], browser=browser, user=user)
+    edge_history = get_history('edge', user, custom_path) if browser == 'edge' else []
+    if 'error' in edge_history:
+        return render_template('error.html', error=edge_history['error'], browser=browser, user=user)
+    tor_history = get_history('tor', user, custom_path) if browser == 'tor' else []
+    if 'error' in tor_history:
+        return render_template('error.html', error=tor_history['error'], browser=browser, user=user)
+    opera_history = get_history('opera', user, custom_path) if browser == 'opera' else []
+    if 'error' in opera_history:
+        return render_template('error.html', error=opera_history['error'], browser=browser, user=user)
+    brave_history = get_history('brave', user, custom_path) if browser == 'brave' else []
+    if 'error' in brave_history:
+        return render_template('error.html', error=brave_history['error'], browser=browser, user=user)
+    firefox_history = get_history('firefox', user, custom_path) if browser == 'firefox' else []
+    if 'error' in firefox_history:
+        return render_template('error.html', error=firefox_history['error'], browser=browser, user=user)
 
-def predict_categories(urls):
-    urls_df = pd.DataFrame(urls, columns=['URL'])
-    predicted_categories = loaded_model.predict(urls_df['URL'])
-    results = pd.DataFrame({'URL': urls, 'Category': predicted_categories})
+   
+    templates = {
+        'chrome': 'chrome.html',
+        'edge': 'edge.html',
+        'tor': 'tor.html',
+        'opera': 'opera.html',
+        'brave': 'brave.html',
+        'firefox': 'firefox.html'
+    }
+
+    # Render the correct template based on the browser
+    return render_template(templates.get(browser, 'chrome.html'),
+                        user=user,
+                        custom_path=custom_path,
+                        chrome_history=chrome_history,
+                        edge_history=edge_history,
+                        tor_history=tor_history,
+                        opera_history=opera_history,
+                        brave_history=brave_history,
+                        firefox_history=firefox_history)
+
+with open('categories.json') as f:
+    categories = json.load(f)['children']
+
+def categorize_url(url, categories):
+    domain = urlparse(url).netloc  # Extract the domain from the URL
+    for category in categories:
+        if category['value'] in domain:
+            return category['category']
+    return "Uncategorized"
+
+def categorize_urls(urls, categories):
+    results = []
+    for url in urls:
+        category = categorize_url(url, categories)
+        results.append({"URL": url, "Category": category})
     return results
 
 @app.route('/prediction', methods=['POST'])
@@ -194,12 +298,19 @@ def predict_urls():
     if not isinstance(urls, list) or not all(isinstance(url, str) for url in urls):
         return jsonify({"error": "Invalid 'urls' data format"}), 400
 
-    predicted_results = predict_categories(urls)
-    results = predicted_results.to_dict(orient='records')
+    predicted_results = categorize_urls(urls, categories)
     
     if request.is_json:
         # For AJAX requests
-        return jsonify(results)
+        return jsonify(predicted_results)
+    else:
+        # If it's a form submission, return results in a simple HTML page
+        results_html = "<h1>Predicted Categories</h1><ul>"
+        for result in predicted_results:
+            results_html += f"<li>{result['URL']} - {result['Category']}</li>"
+        results_html += "</ul>"
+        return results_html
+
 
 @app.route('/heatmap')
 def heat():
@@ -224,38 +335,6 @@ def results_normal():
 @app.route('/results_malicious')
 def results_malicious():
     return render_template('results_malicious.html')
-
-
-@app.route('/view_history', methods=['POST'])
-def view_history():
-    browser = request.form['browser']
-    
-    # Define your browser history fetching logic
-    chrome_history = get_history('chrome') if browser == 'chrome' else []
-    edge_history = get_history('edge') if browser == 'edge' else []
-    tor_history = get_history('tor') if browser == 'tor' else []
-    opera_history = get_history('opera') if browser == 'opera' else []
-    brave_history = get_history('brave') if browser == 'brave' else []
-    firefox_history = get_history('firefox') if browser == 'firefox' else []
-
-    # Map browser names to their corresponding HTML files
-    templates = {
-        'chrome': 'chrome.html',
-        'edge': 'edge.html',
-        'tor': 'tor.html',
-        'opera': 'opera.html',
-        'brave': 'brave.html',
-        'firefox': 'firefox.html'
-    }
-
-    # Render the correct template based on the browser
-    return render_template(templates.get(browser, 'chrome.html'),
-                           chrome_history=chrome_history,
-                           edge_history=edge_history,
-                           tor_history=tor_history,
-                           opera_history=opera_history,
-                           brave_history=brave_history,
-                           firefox_history=firefox_history)
 
 
 def extract_features(url):
@@ -283,6 +362,7 @@ def analyze_url():
 
         # Extract features using the extract_features method
         test_features = pd.DataFrame([extract_features(url) for url in urls])
+        test_features_scaled = pd.DataFrame(scaler.transform(test_features), columns=test_features.columns)
         test_tfidf_features = vectorizer.transform(urls)
         test_features_sparse = csr_matrix(test_features.values)
         test_X = hstack([test_features_sparse, test_tfidf_features])
@@ -303,6 +383,8 @@ def analyze_url():
 @app.route('/predict', methods=['POST'])
 def predict():
     file = request.files.get('file')  # Use .get() to avoid KeyError
+    user = request.form.get('user')
+    browser = request.form.get('browser')
     if file:
         try:
             new_data = pd.read_csv(file)
@@ -327,7 +409,7 @@ def predict():
             else:
                 overall_result = "Normal"
 
-            return render_template('result.html', results=results, overall_result=overall_result)
+            return render_template('result.html', results=results, overall_result=overall_result, user=user, browser=browser)
 
         except Exception as e:
             return str(e)
@@ -343,9 +425,22 @@ def upload_page():
 
 @app.route('/send_history_for_prediction', methods=['POST'])
 def send_history_for_prediction():
-    browser = request.form['browser']
-    history = get_history(browser)
-    
+    browser = request.form.get('browser')
+    user = request.form.get('user')
+    custom_path = request.form.get('custom_path')
+
+    print(user)
+    # Validate inputs
+    if not browser:
+        return "Browser not specified", 400
+    if not user:
+        return "User not specified", 400
+    if not custom_path:
+        return "Custom path not specified", 400
+
+    # Fetch the history using the provided browser, user, and custom_path
+    history = get_history(browser, user, custom_path)
+
     if not history:
         return "No history available for prediction", 404
 
@@ -364,7 +459,7 @@ def send_history_for_prediction():
 
     # Use requests to POST the file to the predict endpoint
     with open(temp_file_path, 'rb') as file:
-        response = requests.post('http://localhost:5000/predict', files={'file': file})
+        response = requests.post('http://localhost:5000/predict', files={'file': file}, data={'user': user, 'browser': browser} )
 
     # Remove the temporary file after use
     os.remove(temp_file_path)
@@ -374,14 +469,23 @@ def send_history_for_prediction():
 
 
 
-
-
-
 @app.route('/download_history', methods=['POST'])
 def download_history():
-    browser = request.form['browser']
-    history = get_history(browser)
-    
+    browser = request.form.get('browser')
+    user = request.form.get('user')
+    custom_path = request.form.get('custom_path')
+
+    print(user)
+    # Validate inputs
+    if not browser:
+        return "Browser not specified", 400
+    if not user:
+        return "User not specified", 400
+    if not custom_path:
+        return "Custom path not specified", 400
+
+    # Fetch the history using the provided browser, user, and custom_path
+    history = get_history(browser, user, custom_path)
     if not history:
         return "No history available for download", 404
 

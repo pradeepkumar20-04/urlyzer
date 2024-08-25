@@ -104,6 +104,30 @@
         .context-menu ul li:hover {
             background-color: #f0f0f0;
         }
+        #detailsTable {
+    margin-top: 20px;
+    width: 1080px; /* Set table width */
+    height: 500px; /* Set table height */
+    border-collapse: collapse;
+    display: none; /* Initially hidden */
+    overflow: auto; /* Allow scrolling if content overflows */
+}
+
+#detailsTable th, #detailsTable td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+    word-wrap: break-word;
+    width: 25%; /* Set column width to ensure equal sizing */
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+}
+
+#detailsTable th {
+    background-color: #007BFF;
+    color: white;
+    max-width: 200px; /* Apply the same max-width for URL column */
+}
+
     </style>
 </head>
 <body>
@@ -125,21 +149,20 @@
     </div>
     
     
-
-    <div id="contextMenu" style="display: none;">Context Menu</div>
     <div id="heatmap"></div>
     <div id="tooltip"></div>
     <table id="detailsTable">
         <thead>
             <tr>
-                <th>Domain</th>
                 <th>URL</th>
-                <th>Visit Count</th>
+                <th>Domain</th>
                 <th>Date and Time</th>
+                <th>Count</th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
+    
     <div class="context-menu" id="contextMenu">
         <ul>
             <li onclick="viewOnTable()">View on Table</li>
@@ -152,14 +175,13 @@
         let heatmapData = [];  // Declare a global variable to store heatmap data
 
         document.addEventListener("DOMContentLoaded", function() {
-            // Retrieve the data from sessionStorage
-            const csvData = sessionStorage.getItem('csvData');
+        const csvData = localStorage.getItem('csvData'); // Retrieve from localStorage
 
-            if (csvData) {
-                processData(csvData);
-            } else {
-                alert("No data found for heatmap.");
-            }
+        if (!csvData) {
+            alert('No data found. Please upload a CSV file.');
+            return;
+        }
+        processData(csvData)
 
             function processData(csvData) {
                 const rows = d3.csvParse(csvData);
@@ -212,143 +234,146 @@
                 weekSelector.add(allOption);
             }
 
-            function createHeatmap() {
-                console.log("Creating heatmap with data:", heatmapData); // Debugging
+            // Create heatmap function
+function createHeatmap() {
+    console.log("Creating heatmap with data:", heatmapData); // Debugging
 
-                const selectedRange = document.getElementById('weekSelector').value;
-                console.log("Selected range:", selectedRange); // Debugging
+    const selectedRange = document.getElementById('weekSelector').value;
+    console.log("Selected range:", selectedRange); // Debugging
 
-                let filteredData;
+    let filteredData;
 
-                if (selectedRange === "all") {
-                    filteredData = heatmapData;
-                } else {
-                    const [startDateStr, endDateStr] = selectedRange.split('|');
-                    const startDate = d3.timeParse("%Y-%m-%d")(startDateStr);
-                    const endDate = d3.timeParse("%Y-%m-%d")(endDateStr);
+    if (selectedRange === "all") {
+        filteredData = heatmapData;
+    } else {
+        const [startDateStr, endDateStr] = selectedRange.split('|');
+        const startDate = d3.timeParse("%Y-%m-%d")(startDateStr);
+        const endDate = d3.timeParse("%Y-%m-%d")(endDateStr);
 
-                    filteredData = heatmapData.filter(d => {
-                        const date = d3.timeParse("%Y-%m-%d %H:%M:%S")(d.date);
-                        return date >= startDate && date < endDate;
-                    });
-                }
+        filteredData = heatmapData.filter(d => {
+            const date = d3.timeParse("%Y-%m-%d %H:%M:%S")(d.date);
+            return date >= startDate && date < endDate;
+        });
+    }
 
-                console.log("Filtered data:", filteredData); // Debugging
+    console.log("Filtered data:", filteredData); // Debugging
 
-                d3.select("#heatmap").selectAll("*").remove();
+    d3.select("#heatmap").selectAll("*").remove();
 
-                const margin = { top: 50, right: 0, bottom: 100, left: 30 };
-                const width = 1000;
-                const height = 320;
-                const gridSize = Math.floor(width / 24);
-                const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                const hours = d3.range(24);
+    const margin = { top: 50, right: 0, bottom: 100, left: 80 };
+    const width = 1000;
+    const height = 320;
+    const gridSize = Math.floor(width / 24);
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const hours = d3.range(24);
 
-                const svg = d3.select("#heatmap")
-                    .append("svg")
-                    .attr("width", width + margin.left + margin.right)
-                    .attr("height", height + margin.top + margin.bottom)
-                    .append("g")
-                    .attr("transform", `translate(${margin.left},${margin.top})`);
+    const svg = d3.select("#heatmap")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
 
-                const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
-                    .domain([0, d3.max(filteredData, d => d.visitCount)]);
+    const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
+        .domain([0, d3.max(filteredData, d => d.visitCount)]);
 
-                const emptyCellColor = "#f0f0f0";  // Color for empty cells
+    const emptyCellColor = "#f0f0f0";  // Color for empty cells
 
-                svg.selectAll(".dayLabel")
-                    .data(days)
-                    .enter().append("text")
-                    .text(d => d)
-                    .attr("x", -5)
-                    .attr("y", (d, i) => i * gridSize)
-                    .style("text-anchor", "end")
-                    .attr("transform", `translate(-6, ${gridSize / 1.5})`);
+    svg.selectAll(".dayLabel")
+        .data(days)
+        .enter().append("text")
+        .text(d => d)
+        .attr("x", 0)
+        .attr("y", (d, i) => i * gridSize)
+        .style("text-anchor", "end")
+        .attr("transform", `translate(-6, ${gridSize / 1.5})`);
 
-                svg.selectAll(".hourLabel")
-                    .data(hours)
-                    .enter().append("text")
-                    .text(d => d)
-                    .attr("x", (d, i) => i * gridSize)
-                    .attr("y", height)
-                    .style("text-anchor", "middle")
-                    .attr("transform", `translate(${gridSize / 2}, -6)`);
+        svg.selectAll(".hourLabel")
+    .data(hours)
+    .enter().append("text")
+    .text(d => d3.timeFormat("%I %p")(new Date(0, 0, 0, d)))  // Format hours in 12-hour format with AM/PM
+    .attr("x", (d, i) => i * gridSize)
+    .attr("y", height)
+    .style("text-anchor", "middle")
+    .style("font-size", "12px")  // Adjust the font size as needed
+    .attr("transform", `translate(${gridSize / 2}, -6)`);
 
-                const gridData = d3.rollup(
-                    filteredData,
-                    v => d3.sum(v, d => d.visitCount),
-                    d => d.day,
-                    d => d.hour
-                );
 
-                svg.selectAll(".hour")
-                    .data(d3.range(7).flatMap(day =>
-                        d3.range(24).map(hour => ({
-                            day,
-                            hour,
-                            visitCount: gridData.get(day)?.get(hour) || 0
-                        }))
-                    ))
-                    .enter().append("rect")
-                    .attr("x", d => d.hour * gridSize)
-                    .attr("y", d => d.day * gridSize)
-                    .attr("class", "hour")
-                    .attr("width", gridSize)
-                    .attr("height", gridSize)
-                    .style("fill", d => d.visitCount > 0 ? colorScale(d.visitCount) : emptyCellColor)  // Apply empty cell color
-                    .style("stroke", "black")  // Set outline color to black
-                    .style("stroke-width", "1px");  // Set outline width to 1px
+    const gridData = d3.rollup(
+        filteredData,
+        v => d3.sum(v, d => d.visitCount),
+        d => d.day,
+        d => d.hour
+    );
 
-                svg.selectAll(".hour")
-                    .on("mouseover", function(event, d) {
-                        const data = filteredData.filter(item => item.day === d.day && item.hour === d.hour);
+    svg.selectAll(".hour")
+        .data(d3.range(7).flatMap(day =>
+            d3.range(24).map(hour => ({
+                day,
+                hour,
+                visitCount: gridData.get(day)?.get(hour) || 0
+            }))
+        ))
+        .enter().append("rect")
+        .attr("x", d => d.hour * gridSize)
+        .attr("y", d => d.day * gridSize)
+        .attr("class", "hour")
+        .attr("width", gridSize)
+        .attr("height", gridSize)
+        .style("fill", d => d.visitCount > 0 ? colorScale(d.visitCount) : emptyCellColor)  // Apply empty cell color
+        .style("stroke", "black")  // Set outline color to black
+        .style("stroke-width", "1px");  // Set outline width to 1px
 
-                        if (data.length) {
-                            const maxDomain = data.reduce((acc, item) => item.visitCount > acc.visitCount ? item : acc, { visitCount: 0 });
-                            const totalVisitCount = d3.sum(data, item => item.visitCount);
+    svg.selectAll(".hour")
+        .on("mouseover", function(event, d) {
+            const data = filteredData.filter(item => item.day === d.day && item.hour === d.hour);
 
-                            d3.select("#tooltip")
-                                .style("left", (event.pageX + 10) + "px")
-                                .style("top", (event.pageY - 20) + "px")
-                                .style("opacity", 1)
-                                .html(`Domain with Highest Count: ${maxDomain.domain || 'N/A'}<br>Total Visit Count: ${totalVisitCount || 'N/A'}<br>Date and Time: ${data[0].date || 'N/A'}`);
-                        }
-                    })
-                    .on("mouseout", function() {
-                        d3.select("#tooltip").style("opacity", 0);
-                    })
-                    .on("contextmenu", function(event, d) {
-                        event.preventDefault();
-                        currentCellData = filteredData.filter(item => item.day === d.day && item.hour === d.hour);
-                        const contextMenu = document.getElementById('contextMenu');
-                        contextMenu.style.left = `${event.pageX}px`;
-                        contextMenu.style.top = `${event.pageY}px`;
-                        contextMenu.style.display = 'block';
-                    });
+            if (data.length) {
+                const maxDomain = data.reduce((acc, item) => item.visitCount > acc.visitCount ? item : acc, { visitCount: 0 });
+                const totalVisitCount = d3.sum(data, item => item.visitCount);
 
-                const legend = svg.selectAll(".legend")
-                    .data([0].concat(colorScale.ticks(6)))
-                    .enter().append("g")
-                    .attr("class", "legend")
-                    .attr("transform", (d, i) => `translate(${i * gridSize}, ${height + margin.top})`);
-
-                legend.append("rect")
-                    .attr("x", 0)
-                    .attr("y", 0)
-                    .attr("width", gridSize)
-                    .attr("height", gridSize / 2)
-                    .style("fill", d => colorScale(d));
-
-                legend.append("text")
-                    .attr("x", gridSize / 2)
-                    .attr("y", gridSize / 2 + 10)
-                    .style("text-anchor", "middle")
-                    .text(d => Math.round(d));
-
-                document.addEventListener('click', function() {
-                    document.getElementById('contextMenu').style.display = 'none';
-                });
+                d3.select("#tooltip")
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 20) + "px")
+                    .style("opacity", 1)
+                    .html(`Total Visit Count: ${totalVisitCount || 'N/A'}<br>Date and Time: ${data[0].date || 'N/A'}`);
             }
+        })
+        .on("mouseout", function() {
+            d3.select("#tooltip").style("opacity", 0);
+        })
+        .on("contextmenu", function(event, d) {
+            event.preventDefault();
+            currentCellData = filteredData.filter(item => item.day === d.day && item.hour === d.hour);
+            const contextMenu = document.getElementById('contextMenu');
+            contextMenu.style.left = `${event.pageX}px`;
+            contextMenu.style.top = `${event.pageY}px`;
+            contextMenu.style.display = 'block';
+        });
+
+    const legend = svg.selectAll(".legend")
+        .data([0].concat(colorScale.ticks(6)))
+        .enter().append("g")
+        .attr("class", "legend")
+        .attr("transform", (d, i) => `translate(${i * gridSize}, ${height + margin.top})`);
+
+    legend.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", gridSize)
+        .attr("height", gridSize / 2)
+        .style("fill", d => colorScale(d));
+
+    legend.append("text")
+        .attr("x", gridSize / 2)
+        .attr("y", gridSize / 2 + 10)
+        .style("text-anchor", "middle")
+        .text(d => Math.round(d));
+
+    document.addEventListener('click', function() {
+        document.getElementById('contextMenu').style.display = 'none';
+    });
+}
 
             document.getElementById('toggleHeatmap').addEventListener('click', function() {
                 const heatmapDiv = document.getElementById('heatmap');
@@ -373,20 +398,28 @@
         });
         
         function viewOnTable() {
-                const table = document.getElementById('detailsTable');
-                const tbody = table.querySelector('tbody');
-                tbody.innerHTML = '';  // Clear previous data
+    const table = document.getElementById('detailsTable');
+    const tbody = table.querySelector('tbody');
+    tbody.innerHTML = '';  // Clear previous data
 
-                if (currentCellData.length > 0) {
-                    currentCellData.forEach(data => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `<td>${data.domain || 'N/A'}</td><td>${data.url || 'N/A'}</td><td>${data.visitCount || 'N/A'}</td><td>${data.date || 'N/A'}</td>`;
-                        tbody.appendChild(row);
-                    });
+    if (currentCellData.length > 0) {
+        currentCellData.forEach(data => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${data.url || 'N/A'}</td>
+                <td>${data.domain || 'N/A'}</td>
+                <td>${data.date || 'N/A'}</td>
+                <td>${data.visitCount || 'N/A'}</td>
+            `;
+            tbody.appendChild(row);
+        });
 
-                    table.style.display = 'table';
-                }
-            }
+        table.style.display = 'table';
+    } else {
+        table.style.display = 'none'; // Hide table if no data
+    }
+}
+
     </script>
        <script src="/static/js/bubblechart.js"></script>
 </body>

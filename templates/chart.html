@@ -178,7 +178,6 @@
 
     <div class="btn-container">
         <button id="showBubbleChart" class="btn">Bubble Chart</button>
-        <button id="showNetworkGraph" class="btn">Network Graph</button>
         <button id="showHeatmap" class="btn">Heatmap</button>
     </div>
 
@@ -197,7 +196,7 @@
             </div>
         </div>
       
-        <div id="network_graph" class="hidden"></div>
+
 
         <div id="heatmap" class="hidden">
             <div class="range-container">
@@ -227,7 +226,7 @@
                 const cellSize = 50; // Size of each cell in the heatmap
                 
                 const bubbleChartContainer = d3.select("#bubble_chart");
-                const networkGraphContainer = d3.select("#network_graph");
+    
                
             
     
@@ -379,131 +378,6 @@
                 fromDateRange.addEventListener('input', updateRangeLabels);
                 toDateRange.addEventListener('input', updateRangeLabels);
 
-                const svgNetwork = networkGraphContainer.append("svg")
-    .attr("width", 1000)
-    .attr("height", 800);
-
-const color1 = d3.scaleOrdinal(d3.schemeCategory10);
-
-const nodes = Object.keys(domainData)
-    .filter(domain => domainData[domain] > 10)
-    .map((domain) => ({
-        id: domain,
-        count: domainData[domain],
-        name: domain.replace(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)\/?.*$/, '$1'),
-        x: Math.random() * 1000,
-        y: Math.random() * 800
-    }));
-
-if (nodes.length < 2) {
-    console.error("Not enough nodes with count greater than 50.");
-    return;
-}
-
-const links = nodes.map((node, i) => ({
-    source: node,
-    target: nodes[(i + 1) % nodes.length],
-    value: Math.random() * 10
-}));
-
-svgNetwork.append("defs").selectAll("marker")
-    .data(["arrow"])
-    .enter().append("marker")
-    .attr("id", "arrow")
-    .attr("viewBox", "0 -5 10 10")
-    .attr("refX", 15)
-    .attr("refY", 0)
-    .attr("markerWidth", 6)
-    .attr("markerHeight", 6)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M0,-5L10,0L0,5")
-    .attr("fill", "#666");
-
-const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink(links).id(d => d.id).distance(120))
-    .force("charge", d3.forceManyBody().strength(-300))
-    .force("center", d3.forceCenter(1000 / 2, 800 / 2))
-    .on("tick", ticked);
-
-const link = svgNetwork.append("g")
-    .attr("stroke", "#aaa")
-    .attr("stroke-opacity", 0.6)
-    .selectAll("line")
-    .data(links)
-    .enter().append("line")
-    .attr("stroke-width", d => Math.sqrt(d.value))
-    .attr("marker-end", "url(#arrow)");
-
-const node = svgNetwork.append("g")
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 1.5)
-    .selectAll("circle")
-    .data(nodes)
-    .enter().append("circle")
-    .attr("r", d => Math.sqrt(d.count) + 5)
-    .attr("fill", d => color1(d.id))
-    .call(drag(simulation));
-
-// Tooltip functionality
-const tooltip1 = d3.select("#tooltip");
-
-node.on("mouseover", (event, d) => {
-    tooltip1.transition().duration(200).style("opacity", .9);
-    tooltip1.html(`ID: ${d.id}<br>Count: ${d.count}`)
-        .style("left", (event.pageX + 5) + "px")
-        .style("top", (event.pageY - 28) + "px");
-}).on("mouseout", () => {
-    tooltip1.transition().duration(500).style("opacity", 0);
-});
-
-// Adding text labels for each node
-const labels = svgNetwork.append("g")
-    .selectAll("text")
-    .data(nodes)
-    .enter().append("text")
-    .attr("x", d => d.x)
-    .attr("y", d => d.y)
-    .attr("dy", "-1em") // Position the label slightly above the node
-    .attr("text-anchor", "middle")
-    .attr("fill", "#333") // Dark color for text labels
-    .style("font-size", "12px")
-    .text(d => d.name);
-
-function ticked() {
-    link
-        .attr("x1", d => d.source.x)
-        .attr("y1", d => d.source.y)
-        .attr("x2", d => d.target.x)
-        .attr("y2", d => d.target.y);
-
-    node
-        .attr("cx", d => d.x = Math.max(20, Math.min(980, d.x)))
-        .attr("cy", d => d.y = Math.max(20, Math.min(780, d.y)));
-
-    // Update label positions
-    labels
-        .attr("x", d => d.x)
-        .attr("y", d => d.y - 10); // Position slightly above the node
-}
-
-function drag(simulation) {
-    return d3.drag()
-        .on("start", function (event, d) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        })
-        .on("drag", function (event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        })
-        .on("end", function (event, d) {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-        });
-}
 
 const urlData = JSON.parse(sessionStorage.getItem('urlData'));
 // Ensure dateData is retrieved
@@ -533,7 +407,7 @@ function createHeatmap(selectedWeek) {
     heatmapSvg.selectAll(".dayLabel")
         .data(daysOfWeek)
         .enter().append("text")
-        .attr("x", 50)
+        .attr("x", 140)
         .attr("y", (d, i) => i * cellSize + cellSize + 10)
         .style("text-anchor", "end")
         .style("font-size", "12px")
@@ -542,7 +416,7 @@ function createHeatmap(selectedWeek) {
     heatmapSvg.selectAll(".timeLabel")
         .data(timesOfDay)
         .enter().append("text")
-        .attr("x", (d, i) => i * cellSize + 85)
+        .attr("x", (d, i) => i * cellSize + 175)
         .attr("y", 20)
         .style("text-anchor", "middle")
         .style("font-size", "12px")
@@ -582,7 +456,7 @@ function createHeatmap(selectedWeek) {
             }))
         ))
         .enter().append("rect")
-        .attr("x", d => d.hour * cellSize + 60)
+        .attr("x", d => d.hour * cellSize + 150)
         .attr("y", d => d.day * cellSize + 30)
         .attr("width", cellSize)
         .attr("height", cellSize)
@@ -757,25 +631,19 @@ d3.select("#heatmapContainer").append("div")
           
                 // Button functionality
                 const showBubbleChartBtn = document.getElementById("showBubbleChart");
-                const showNetworkGraphBtn = document.getElementById("showNetworkGraph");
+               
                 const showHeatmapBtn = document.getElementById("showHeatmap");
                 
     
                 showBubbleChartBtn.addEventListener("click", () => {
                     bubbleChartContainer.classed("hidden", false);
-                    networkGraphContainer.classed("hidden", true);
-                    heatmapContainer.classed("hidden", true);
-                });
-
-                showNetworkGraphBtn.addEventListener("click", () => {
-                    bubbleChartContainer.classed("hidden", true);
-                    networkGraphContainer.classed("hidden", false);
+        
                     heatmapContainer.classed("hidden", true);
                 });
 
                 showHeatmapBtn.addEventListener("click", () => {
                     bubbleChartContainer.classed("hidden", true);
-                    networkGraphContainer.classed("hidden", true);
+                  
                     heatmapContainer.classed("hidden", false);
                 });
     

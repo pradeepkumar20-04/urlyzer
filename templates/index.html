@@ -7,6 +7,7 @@
     <script src="https://kit.fontawesome.com/a076d05399.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
+        /* Existing styles omitted for brevity */
         @keyframes fadeIn {
             0% { opacity: 0; transform: translateY(-20px); }
             100% { opacity: 1; transform: translateY(0); }
@@ -144,6 +145,19 @@
             margin-right: 8px; /* Decreased margin-right */
             animation: fadeIn 1.5s ease;
         }
+        #user-selection {
+            margin-top: 20px;
+            display: none; /* Hidden by default, shown after browser selection */
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            font-size: 1em;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-bottom: 15px;
+        }
     </style>
     
     <script>
@@ -153,15 +167,62 @@
             document.body.classList.remove(...backgrounds);
             document.body.classList.add(selectedBrowser + '-bg');
 
+            fetchUsers()
+
             // Add animation effect
             var form = document.getElementById('view-history-form');
             form.classList.add('move-right');
+            document.getElementById('user-selection').style.display = 'block';
+
+            // Fetch and populate users for selection
+            fetchUsers();
         }
+
+        function fetchUsers() {
+            fetch('/get_users')
+                .then(response => response.json())
+                .then(data => {
+                    const userSelect = document.getElementById('user-select');
+                    userSelect.innerHTML = '<option value="">--Select User--</option>'; // Default option
+
+                    data.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user;
+                        option.textContent = user;
+                        userSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error fetching users:', error));
+        }
+
+        function validateForm() {
+            const radios = document.querySelectorAll('input[name="browser"]');
+            const customPath = document.getElementById('custom-path').value;
+            const errorMessage = document.getElementById('error-message');
+     
+            let selected = false;
+
+            for (const radio of radios) {
+                if (radio.checked) {
+                    selected = true;
+                    break;
+                }
+            }
+
+            if (!selected) {
+                errorMessage.textContent = "Please select at least one browser to view history.";
+                return false;
+            }
+
+            errorMessage.textContent = ""; // Clear any previous error message
+            return true;
+        }
+
     </script>
 </head>
 <body>
     <div class="container">
-        <form id="view-history-form" action="/view_history" method="POST" enctype="multipart/form-data" onsubmit="return validateForm()">
+        <form id="view-history-form" action="/view_history" method="POST" onsubmit="return validateForm()">
             <h1>Select the Browser to View History</h1>
             <!-- Radio buttons for browser selection -->
             <label>
@@ -188,43 +249,25 @@
                 <input type="radio" name="browser" value="firefox" onclick="changeBackground()">
                 <img src="{{ url_for('static', filename='firefox1.png') }}" class="custom-icon" alt="Firefox icon">Firefox
             </label>
-            <div>
+            <div id="user-selection">
+                <label for="user-select">Select User:</label>
+                <select id="user-select" name="user" onchange="fetchHistoryPath()">
+                    <option value="">--Select User--</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+<div>            
                 <button type="submit">View History</button>
-                <span id="error-message" class="error-message" style="color: red; margin-left: 10px;font-size: 14px;"></span>
+                <span id="error-message" class="error-message"></span>
             </div>
             <div class="link-container">
                 <p class="p">If you have history to analyze, Click <a href="/upload">Here</a></p>
             </div>
         </form>
     </div>
-    
+
     {% if error %}
         <div class="error">{{ error }}</div>
     {% endif %}
-    
-    <script>
-        function validateForm() {
-            const radios = document.querySelectorAll('input[name="browser"]');
-            const errorMessage = document.getElementById('error-message');
-            let selected = false;
-    
-            for (const radio of radios) {
-                if (radio.checked) {
-                    selected = true;
-                    break;
-                }
-            }
-    
-            if (!selected) {
-                errorMessage.textContent = "Please select at least one browser to view history.";
-
-                errorMessage.textContent = "select at least one browser to view history.";
-                return false;
-            }
-    
-            errorMessage.textContent = ""; // Clear any previous error message
-            return true;
-        }
-    </script>
-    </body>
-    </html>
+</body>
+</html>
