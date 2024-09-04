@@ -20,14 +20,13 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from flask import flash 
 from scipy.sparse import hstack, csr_matrix
 from joblib import Parallel, delayed
+import ctypes
 
 
 app = Flask(__name__)
 
 # Load the trained model (Random Forest model)
 rfc_model = joblib.load('rfc_model.pkl')
-filename = 'naive_bayes_url_classifier.sav'
-loaded_model = pickle.load(open(filename, 'rb'))
 model = joblib.load('url_classifier_model.pkl')
 vectorizer = joblib.load('tfidf_vectorizer.pkl')
 scaler = joblib.load('feature_scaler.pkl')
@@ -127,15 +126,64 @@ def shortening_service(url):
     else:
         return 1
 
+def get_username_and_rid(user_dir):
+    # Get the username from the directory name
+    username = user_dir
+
+    # Convert the username to a SID
+    sid = ctypes.create_string_buffer(256)
+    sid_size = ctypes.wintypes.DWORD(256)
+    domain = ctypes.create_string_buffer(256)
+    domain_size = ctypes.wintypes.DWORD(256)
+    sid_name_use = ctypes.wintypes.DWORD()
+
+    result = ctypes.windll.advapi32.LookupAccountNameA(
+        None,  # System name
+        username.encode('utf-8'),  # Account name
+        sid,
+        ctypes.byref(sid_size),
+        domain,
+        ctypes.byref(domain_size),
+        ctypes.byref(sid_name_use)
+    )
+
+    if result == 0:
+        return username, 'RID not found'
+
+    # Convert the SID to a string
+    sid_string_ptr = ctypes.wintypes.LPSTR()
+    if ctypes.windll.advapi32.ConvertSidToStringSidA(sid, ctypes.byref(sid_string_ptr)) == 0:
+        return username, 'RID not found'
+
+    # Copy the SID string to a Python string
+    sid_string = sid_string_ptr.value.decode('utf-8')
+
+    # Free the memory allocated for the SID string
+    ctypes.windll.kernel32.LocalFree(sid_string_ptr)
+
+    # Extract the RID from the SID string
+    sid_parts = sid_string.split('-')
+    if len(sid_parts) >= 5:
+        rid = sid_parts[-1]  # The last part of the SID is the RID
+    else:
+        rid = 'RID not found'
+    
+    return username, rid
+
 def list_users():
     user_home_dirs = []
     if os.name == 'nt':  # Windows
         base_path = 'C:\\Users\\'
+        user_home_dirs = [name for name in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, name))]
+        user_with_rids = []
+        for user in user_home_dirs:
+            username, rid = get_username_and_rid(user)
+            user_with_rids.append(f"{username} (RID:{rid})")
+        return user_with_rids
     else:  # macOS/Linux
         base_path = '/home/'
-
-    user_home_dirs = [name for name in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, name))]
-    return user_home_dirs
+        user_home_dirs = [name for name in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, name))]
+        return user_home_dirs  # RID extraction is not applicable for macOS/Linux
 
 @app.route('/get_users', methods=['GET'])
 def get_users():
@@ -143,7 +191,9 @@ def get_users():
     return jsonify(users)
 
 def get_browser_history_path(browser, user, custom_path):
-    base_path = os.path.join('C:\\Users', user)
+    username = user.split(" ")[0]
+    base_path = os.path.join('C:\\Users', username)
+    print(base_path)
     print(custom_path)
 
     if custom_path and os.path.exists(custom_path):
@@ -161,7 +211,6 @@ def get_browser_history_path(browser, user, custom_path):
         elif browser == 'brave':
             path = base_path + r'\AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History'
         elif browser == 'firefox':
-            # Replace <your-profile-folder> with the actual profile folder for the user
             path = base_path + r'\AppData\Roaming\Mozilla\Firefox\Profiles\<your-profile-folder>\places.sqlite'
         else:
             path = ""
@@ -178,8 +227,6 @@ def copy_database_to_temp(path):
 
 def get_history(browser, user, custom_path):
     history = []
-    
-    # Select user if not provided
 
     path, error = get_browser_history_path(browser, user, custom_path)
     if error:
@@ -193,7 +240,7 @@ def get_history(browser, user, custom_path):
         return {'error': f'Default path for {browser} does not exist. Please enter the correct path.'}
 
     if path and os.path.exists(path):
-        retries = 5
+        retries = 10
         while retries > 0:
             try:
                 # Copy the database file to a temporary location
@@ -220,6 +267,49 @@ def get_history(browser, user, custom_path):
     
     return history
     
+@app.route('/send_history_for_prediction', methods=['POST'])
+def send_history_for_prediction():
+    browser = request.form.get('browser')
+    user = request.form.get('user')
+    custom_path = request.form.get('custom_path')
+
+    print(user)
+    # Validate inputs
+    if not browser:
+        return "Browser not specified", 400
+    if not user:
+        return "User not specified", 400
+    if not custom_path:
+        return "Custom path not specified", 400
+
+    history = get_history(browser, user, custom_path)
+
+    if not history:
+        return "No history available for prediction", 404
+
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['url'])
+    writer.writerows([[row[0]] for row in history])
+    
+    output.seek(0)
+   
+    temp_file_path = os.path.join(tempfile.gettempdir(), 'history.csv')
+    with open(temp_file_path, 'w', newline='', encoding='utf-8') as temp_file:
+        temp_file.write(output.getvalue())
+
+    
+    with open(temp_file_path, 'rb') as file:
+        response = requests.post('http://localhost:5000/predict', files={'file': file}, data={'user': user, 'browser': browser} )
+
+    # Remove the temporary file after use
+    os.remove(temp_file_path)
+
+    # Return the response from the /predict endpoint
+    return response.content
+
+
 @app.route('/view_history', methods=['POST'])
 def view_history():
     browser = request.form['browser']
@@ -227,9 +317,7 @@ def view_history():
     custom_path = request.form.get('custom-path')
     print(user,browser,custom_path)
     
-    # Fetch the history for the selected browser and user
-  
-        # Define your browser history fetching logic
+
     chrome_history = get_history('chrome', user, custom_path) if browser == 'chrome' else []
     if 'error' in chrome_history:
         return render_template('error.html', error=chrome_history['error'], browser=browser, user=user)
@@ -382,7 +470,7 @@ def analyze_url():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    file = request.files.get('file')  # Use .get() to avoid KeyError
+    file = request.files.get('file')
     user = request.form.get('user')
     browser = request.form.get('browser')
     if file:
@@ -421,52 +509,6 @@ def predict():
 @app.route('/upload')
 def upload_page():
     return render_template('upload.html')
-
-
-@app.route('/send_history_for_prediction', methods=['POST'])
-def send_history_for_prediction():
-    browser = request.form.get('browser')
-    user = request.form.get('user')
-    custom_path = request.form.get('custom_path')
-
-    print(user)
-    # Validate inputs
-    if not browser:
-        return "Browser not specified", 400
-    if not user:
-        return "User not specified", 400
-    if not custom_path:
-        return "Custom path not specified", 400
-
-    # Fetch the history using the provided browser, user, and custom_path
-    history = get_history(browser, user, custom_path)
-
-    if not history:
-        return "No history available for prediction", 404
-
-    # Convert history to CSV format and save to a temporary file
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(['url'])
-    writer.writerows([[row[0]] for row in history])
-    
-    output.seek(0)
-    
-    # Save the CSV data to a temporary file
-    temp_file_path = os.path.join(tempfile.gettempdir(), 'history.csv')
-    with open(temp_file_path, 'w', newline='', encoding='utf-8') as temp_file:
-        temp_file.write(output.getvalue())
-
-    # Use requests to POST the file to the predict endpoint
-    with open(temp_file_path, 'rb') as file:
-        response = requests.post('http://localhost:5000/predict', files={'file': file}, data={'user': user, 'browser': browser} )
-
-    # Remove the temporary file after use
-    os.remove(temp_file_path)
-
-    # Return the response from the /predict endpoint
-    return response.content
-
 
 
 @app.route('/download_history', methods=['POST'])
